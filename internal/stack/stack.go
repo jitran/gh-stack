@@ -1,0 +1,151 @@
+package stack
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+)
+
+const (
+	schemaVersion = 1
+	stackFileName = "gh-stack"
+)
+
+// BranchRef represents a branch and its HEAD commit.
+type BranchRef struct {
+	Branch string `json:"branch"`
+	Head   string `json:"head"`
+}
+
+// Stack represents a single stack of branches.
+type Stack struct {
+	Trunk    BranchRef   `json:"trunk"`
+	Branches []BranchRef `json:"branches"`
+}
+
+// BranchNames returns the list of branch names in order.
+func (s *Stack) BranchNames() []string {
+	names := make([]string, len(s.Branches))
+	for i, b := range s.Branches {
+		names[i] = b.Branch
+	}
+	return names
+}
+
+// IndexOf returns the index of the given branch in the stack, or -1 if not found.
+func (s *Stack) IndexOf(branch string) int {
+	for i, b := range s.Branches {
+		if b.Branch == branch {
+			return i
+		}
+	}
+	return -1
+}
+
+// Contains returns true if the branch is part of this stack (including trunk).
+func (s *Stack) Contains(branch string) bool {
+	if s.Trunk.Branch == branch {
+		return true
+	}
+	return s.IndexOf(branch) >= 0
+}
+
+// BaseBranch returns the base branch for the given branch in the stack.
+// For the first branch, this is the trunk. For others, it's the previous branch.
+func (s *Stack) BaseBranch(branch string) string {
+	idx := s.IndexOf(branch)
+	if idx <= 0 {
+		return s.Trunk.Branch
+	}
+	return s.Branches[idx-1].Branch
+}
+
+// StackFile represents the JSON file stored in .git/gh-stack.
+type StackFile struct {
+	SchemaVersion int     `json:"schemaVersion"`
+	Repository    string  `json:"repository"`
+	Stacks        []Stack `json:"stacks"`
+}
+
+// FindStackForBranch returns the stack that contains the given branch, or nil.
+func (sf *StackFile) FindStackForBranch(branch string) *Stack {
+	for i := range sf.Stacks {
+		if sf.Stacks[i].Contains(branch) {
+			return &sf.Stacks[i]
+		}
+	}
+	return nil
+}
+
+// ValidateNoDuplicateBranch checks that the branch is not already in any stack.
+func (sf *StackFile) ValidateNoDuplicateBranch(branch string) error {
+	for _, s := range sf.Stacks {
+		if s.Contains(branch) {
+			return fmt.Errorf("branch %q is already part of a stack", branch)
+		}
+	}
+	return nil
+}
+
+// AddStack adds a new stack to the file.
+func (sf *StackFile) AddStack(s Stack) {
+	sf.Stacks = append(sf.Stacks, s)
+}
+
+// RemoveStack removes the stack at the given index.
+func (sf *StackFile) RemoveStack(idx int) {
+	sf.Stacks = append(sf.Stacks[:idx], sf.Stacks[idx+1:]...)
+}
+
+// RemoveStackForBranch removes the stack containing the given branch.
+func (sf *StackFile) RemoveStackForBranch(branch string) bool {
+	for i := range sf.Stacks {
+		if sf.Stacks[i].Contains(branch) {
+			sf.RemoveStack(i)
+			return true
+		}
+	}
+	return false
+}
+
+// stackFilePath returns the path to the gh-stack file.
+func stackFilePath(gitDir string) string {
+	return filepath.Join(gitDir, stackFileName)
+}
+
+// Load reads the stack file from the given git directory.
+// Returns an empty StackFile if the file does not exist.
+func Load(gitDir string) (*StackFile, error) {
+	path := stackFilePath(gitDir)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return &StackFile{
+				SchemaVersion: schemaVersion,
+			}, nil
+		}
+		return nil, fmt.Errorf("reading stack file: %w", err)
+	}
+
+	var sf StackFile
+	if err := json.Unmarshal(data, &sf); err != nil {
+		return nil, fmt.Errorf("parsing stack file: %w", err)
+	}
+	return &sf, nil
+}
+
+// Save writes the stack file to the given git directory.
+func Save(gitDir string, sf *StackFile) error {
+	sf.SchemaVersion = schemaVersion
+	data, err := json.MarshalIndent(sf, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshaling stack file: %w", err)
+	}
+	path := stackFilePath(gitDir)
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return fmt.Errorf("writing stack file: %w", err)
+	}
+	return nil
+}

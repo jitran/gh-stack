@@ -21,6 +21,9 @@ func RootCmd() *cobra.Command {
 	root.SetOut(cfg.Out)
 	root.SetErr(cfg.Err)
 
+	root.AddCommand(InitCmd(cfg))
+	root.AddCommand(AddCmd(cfg))
+
 	for _, ph := range placeholderCommands {
 		root.AddCommand(PlaceholderCmd(ph, cfg))
 	}

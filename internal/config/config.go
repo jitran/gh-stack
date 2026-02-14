@@ -5,11 +5,12 @@ import (
 	"io"
 	"os"
 
+	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/cli/go-gh/v2/pkg/term"
 	"github.com/mgutz/ansi"
 )
 
-// Config holds shared state for all commands
+// Config holds shared state for all commands.
 type Config struct {
 	Terminal term.Term
 	Out      io.Writer
@@ -24,7 +25,7 @@ type Config struct {
 	ColorGray    func(string) string
 }
 
-// New creates a new Config with terminal-aware output and color support
+// New creates a new Config with terminal-aware output and color support.
 func New() *Config {
 	terminal := term.FromEnv()
 	cfg := &Config{
@@ -80,4 +81,8 @@ func (c *Config) Outf(format string, args ...any) {
 
 func (c *Config) IsInteractive() bool {
 	return c.Terminal.IsTerminalOutput()
+}
+
+func (c *Config) Repo() (repository.Repository, error) {
+	return repository.Current()
 }
