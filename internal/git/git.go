@@ -3,6 +3,7 @@ package git
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -110,8 +111,12 @@ func Rebase(onto string) error {
 }
 
 // RebaseContinue continues an in-progress rebase.
+// It sets GIT_EDITOR=true to prevent git from opening an interactive editor
+// for the commit message, which would cause the command to hang.
 func RebaseContinue() error {
-	return runSilent("rebase", "--continue")
+	cmd := exec.Command("git", "rebase", "--continue")
+	cmd.Env = append(os.Environ(), "GIT_EDITOR=true")
+	return cmd.Run()
 }
 
 // RebaseAbort aborts an in-progress rebase.
@@ -132,6 +137,69 @@ func IsRebaseInProgress() bool {
 		}
 	}
 	return false
+}
+
+// ConflictedFiles returns the list of files that have merge conflicts.
+func ConflictedFiles() ([]string, error) {
+	output, err := run("diff", "--name-only", "--diff-filter=U")
+	if err != nil {
+		return nil, err
+	}
+	if output == "" {
+		return nil, nil
+	}
+	return strings.Split(output, "\n"), nil
+}
+
+// ConflictMarkerInfo holds the location of conflict markers in a file.
+type ConflictMarkerInfo struct {
+	File     string
+	Sections []ConflictSection
+}
+
+// ConflictSection represents a single conflict hunk in a file.
+type ConflictSection struct {
+	StartLine int // line number of <<<<<<<
+	EndLine   int // line number of >>>>>>>
+}
+
+// FindConflictMarkers scans a file for conflict markers and returns their locations.
+func FindConflictMarkers(filePath string) (*ConflictMarkerInfo, error) {
+	output, err := run("diff", "--check", "--", filePath)
+	// git diff --check exits non-zero when conflicts exist, so we parse even on error
+	if output == "" && err != nil {
+		return nil, err
+	}
+
+	info := &ConflictMarkerInfo{File: filePath}
+	var currentSection *ConflictSection
+
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		// Format: "filename:lineno: leftover conflict marker"
+		parts := strings.SplitN(line, ":", 3)
+		if len(parts) < 3 {
+			continue
+		}
+		lineNo, parseErr := strconv.Atoi(strings.TrimSpace(parts[1]))
+		if parseErr != nil {
+			continue
+		}
+		marker := strings.TrimSpace(parts[2])
+		if strings.Contains(marker, "leftover conflict marker") {
+			if currentSection == nil || currentSection.EndLine != 0 {
+				currentSection = &ConflictSection{StartLine: lineNo}
+				info.Sections = append(info.Sections, *currentSection)
+			}
+			// Update the end line of the last section
+			info.Sections[len(info.Sections)-1].EndLine = lineNo
+		}
+	}
+
+	return info, nil
 }
 
 // HeadSHA returns the full SHA of the given ref.
