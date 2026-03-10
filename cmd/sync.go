@@ -1,0 +1,260 @@
+package cmd
+
+import (
+	"github.com/github/gh-stack/internal/config"
+	"github.com/github/gh-stack/internal/git"
+	"github.com/github/gh-stack/internal/stack"
+	"github.com/spf13/cobra"
+)
+
+type syncOptions struct{}
+
+func SyncCmd(cfg *config.Config) *cobra.Command {
+	opts := &syncOptions{}
+
+	cmd := &cobra.Command{
+		Use:   "sync",
+		Short: "Sync the current stack with the remote",
+		Long: `Fetch, rebase, push, and sync PR state for the current stack.
+
+This command performs a safe, non-interactive synchronization:
+
+  1. Fetches the latest changes from origin
+  2. Fast-forwards the trunk branch to match the remote
+  3. Cascade-rebases stack branches onto their updated parents
+  4. Pushes all branches (using --force-with-lease)
+  5. Syncs PR state from GitHub
+
+If a rebase conflict is detected, all branches are restored to their
+original state and you are advised to run "gh stack rebase" to resolve
+conflicts interactively.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runSync(cfg, opts)
+		},
+	}
+
+	return cmd
+}
+
+func runSync(cfg *config.Config, _ *syncOptions) error {
+	gitDir, err := git.GitDir()
+	if err != nil {
+		cfg.Errorf("not a git repository")
+		return nil
+	}
+
+	sf, err := stack.Load(gitDir)
+	if err != nil {
+		cfg.Errorf("failed to load stack state: %s", err)
+		return nil
+	}
+
+	currentBranch, err := git.CurrentBranch()
+	if err != nil {
+		cfg.Errorf("failed to get current branch: %s", err)
+		return nil
+	}
+
+	s, err := resolveStack(sf, currentBranch, cfg)
+	if err != nil {
+		cfg.Errorf("%s", err)
+		return nil
+	}
+	if s == nil {
+		cfg.Errorf("current branch %q is not part of a stack", currentBranch)
+		return nil
+	}
+
+	// Re-read current branch in case disambiguation caused a checkout
+	currentBranch, err = git.CurrentBranch()
+	if err != nil {
+		cfg.Errorf("failed to get current branch: %s", err)
+		return nil
+	}
+
+	// --- Step 1: Fetch ---
+	cfg.Printf("Fetching origin ...")
+	if err := git.Fetch("origin"); err != nil {
+		cfg.Warningf("Failed to fetch origin: %v", err)
+	} else {
+		cfg.Successf("Fetched latest changes")
+	}
+
+	// --- Step 2: Fast-forward trunk ---
+	trunk := s.Trunk.Branch
+	trunkUpdated := false
+
+	localSHA, localErr := git.HeadSHA(trunk)
+	remoteSHA, remoteErr := git.HeadSHA("origin/" + trunk)
+
+	if localErr != nil || remoteErr != nil {
+		cfg.Warningf("Could not compare trunk %s with remote — skipping trunk update", trunk)
+	} else if localSHA == remoteSHA {
+		cfg.Successf("Trunk %s is already up to date", trunk)
+	} else {
+		isAncestor, err := git.IsAncestor(localSHA, remoteSHA)
+		if err != nil {
+			cfg.Warningf("Could not determine fast-forward status for %s: %v", trunk, err)
+		} else if !isAncestor {
+			cfg.Warningf("Trunk %s has diverged from origin — skipping trunk update", trunk)
+			cfg.Printf("  Local and remote %s have diverged. Resolve manually.", trunk)
+		} else {
+			// Fast-forward the trunk branch
+			if currentBranch == trunk {
+				// Can't update ref of checked-out branch; merge instead
+				if err := ffMerge(trunk); err != nil {
+					cfg.Warningf("Failed to fast-forward %s: %v", trunk, err)
+				} else {
+					cfg.Successf("Trunk %s fast-forwarded to %s", trunk, short(remoteSHA))
+					trunkUpdated = true
+				}
+			} else {
+				if err := updateBranchRef(trunk, remoteSHA); err != nil {
+					cfg.Warningf("Failed to fast-forward %s: %v", trunk, err)
+				} else {
+					cfg.Successf("Trunk %s fast-forwarded to %s", trunk, short(remoteSHA))
+					trunkUpdated = true
+				}
+			}
+		}
+	}
+
+	// --- Step 3: Cascade rebase (only if trunk moved) ---
+	rebased := false
+	if trunkUpdated {
+		cfg.Printf("")
+		cfg.Printf("Rebasing stack ...")
+
+		// Save original refs so we can restore on conflict
+		originalRefs := make(map[string]string)
+		for _, b := range s.Branches {
+			sha, _ := git.HeadSHA(b.Branch)
+			originalRefs[b.Branch] = sha
+		}
+
+		conflicted := false
+		for i, br := range s.Branches {
+			var base string
+			if i == 0 {
+				base = trunk
+			} else {
+				base = s.Branches[i-1].Branch
+			}
+
+			if err := git.CheckoutBranch(br.Branch); err != nil {
+				cfg.Errorf("Failed to checkout %s: %v", br.Branch, err)
+				conflicted = true
+				break
+			}
+
+			if err := git.Rebase(base); err != nil {
+				// Conflict detected — abort and restore everything
+				if git.IsRebaseInProgress() {
+					_ = git.RebaseAbort()
+				}
+
+				// Restore all branches to original state
+				for branch, sha := range originalRefs {
+					_ = git.CheckoutBranch(branch)
+					_ = git.ResetHard(sha)
+				}
+
+				_ = git.CheckoutBranch(currentBranch)
+
+				cfg.Errorf("Conflict detected rebasing %s onto %s", br.Branch, base)
+				cfg.Printf("  All branches restored to their original state.")
+				cfg.Printf("  Run %s to resolve conflicts interactively.",
+					cfg.ColorCyan("gh stack rebase"))
+				conflicted = true
+				break
+			}
+
+			cfg.Successf("Rebased %s onto %s", br.Branch, base)
+		}
+
+		if !conflicted {
+			rebased = true
+			_ = git.CheckoutBranch(currentBranch)
+		}
+	}
+
+	// --- Step 4: Push ---
+	cfg.Printf("")
+	branches := make([]string, len(s.Branches))
+	for i, b := range s.Branches {
+		branches[i] = b.Branch
+	}
+
+	// After rebase, force-with-lease is required (history rewritten).
+	// Without rebase, try a normal push first.
+	force := rebased
+	cfg.Printf("Pushing branches ...")
+	if err := git.Push("origin", branches, force, false); err != nil {
+		if !force {
+			cfg.Warningf("Push failed — branches may need force push after rebase")
+			cfg.Printf("  Run %s to push with --force-with-lease.",
+				cfg.ColorCyan("gh stack push -f"))
+		} else {
+			cfg.Warningf("Push failed: %v", err)
+			cfg.Printf("  Run %s to retry.", cfg.ColorCyan("gh stack push -f"))
+		}
+	} else {
+		cfg.Successf("Pushed %d branches", len(branches))
+	}
+
+	// --- Step 5: Sync PR state ---
+	cfg.Printf("")
+	cfg.Printf("Syncing PRs ...")
+	syncStackPRs(cfg, s)
+
+	// Report PR status for each branch
+	for _, b := range s.Branches {
+		if b.PullRequest != nil {
+			state := "Open"
+			if b.PullRequest.Merged {
+				state = "Merged"
+			}
+			cfg.Successf("PR #%d (%s) — %s", b.PullRequest.Number, b.Branch, state)
+		} else {
+			cfg.Warningf("%s has no PR", b.Branch)
+		}
+	}
+
+	// --- Step 6: Update base SHAs and save ---
+	for i := range s.Branches {
+		parent := trunk
+		if i > 0 {
+			parent = s.Branches[i-1].Branch
+		}
+		if base, err := git.HeadSHA(parent); err == nil {
+			s.Branches[i].Base = base
+		}
+	}
+
+	if err := stack.Save(gitDir, sf); err != nil {
+		cfg.Errorf("failed to save stack state: %s", err)
+		return nil
+	}
+
+	cfg.Printf("")
+	cfg.Successf("Stack synced")
+	return nil
+}
+
+// ffMerge fast-forwards the currently checked-out branch to match origin.
+func ffMerge(branch string) error {
+	return git.MergeFF("origin/" + branch)
+}
+
+// updateBranchRef updates a branch ref to point to a new SHA (for branches not checked out).
+func updateBranchRef(branch, sha string) error {
+	return git.UpdateBranchRef(branch, sha)
+}
+
+// short returns the first 7 characters of a SHA.
+func short(sha string) string {
+	if len(sha) > 7 {
+		return sha[:7]
+	}
+	return sha
+}

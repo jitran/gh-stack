@@ -202,6 +202,20 @@ func FindConflictMarkers(filePath string) (*ConflictMarkerInfo, error) {
 	return info, nil
 }
 
+// IsAncestor returns whether ancestor is an ancestor of descendant.
+// This is useful to check if a fast-forward merge is possible.
+func IsAncestor(ancestor, descendant string) (bool, error) {
+	err := runSilent("merge-base", "--is-ancestor", ancestor, descendant)
+	if err == nil {
+		return true, nil
+	}
+	// Exit code 1 means "not an ancestor", which is not an error condition.
+	if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+		return false, nil
+	}
+	return false, err
+}
+
 // HeadSHA returns the full SHA of the given ref.
 func HeadSHA(ref string) (string, error) {
 	return run("rev-parse", ref)
@@ -261,4 +275,14 @@ func ResetHard(ref string) error {
 // SetUpstreamTracking sets the upstream tracking branch.
 func SetUpstreamTracking(branch, remote string) error {
 	return runSilent("branch", "--set-upstream-to="+remote+"/"+branch, branch)
+}
+
+// MergeFF fast-forwards the currently checked-out branch using a merge.
+func MergeFF(target string) error {
+	return runSilent("merge", "--ff-only", target)
+}
+
+// UpdateBranchRef moves a branch pointer to a new commit (for branches not currently checked out).
+func UpdateBranchRef(branch, sha string) error {
+	return runSilent("branch", "-f", branch, sha)
 }
