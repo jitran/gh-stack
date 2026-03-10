@@ -186,6 +186,10 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 	}
 
 	sf.AddStack(newStack)
+
+	// Sync PR state for adopted branches
+	syncStackPRs(cfg, &sf.Stacks[len(sf.Stacks)-1])
+
 	if err := stack.Save(gitDir, sf); err != nil {
 		return err
 	}

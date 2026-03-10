@@ -56,7 +56,7 @@ func runView(cfg *config.Config, opts *viewOptions) error {
 		return nil
 	}
 
-	s, err := sf.ResolveStack(currentBranch, cfg)
+	s, err := resolveStack(sf, currentBranch, cfg)
 	if err != nil {
 		cfg.Errorf("%s", err)
 		return nil
@@ -73,6 +73,10 @@ func runView(cfg *config.Config, opts *viewOptions) error {
 		cfg.Errorf("failed to get current branch: %s", err)
 		return nil
 	}
+
+	// Sync PR state
+	syncStackPRs(cfg, s)
+	_ = stack.Save(gitDir, sf)
 
 	if opts.web {
 		return viewWeb(cfg, s)

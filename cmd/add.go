@@ -40,7 +40,7 @@ func runAdd(cfg *config.Config, args []string) error {
 		return nil
 	}
 
-	s, err := sf.ResolveStack(currentBranch, cfg)
+	s, err := resolveStack(sf, currentBranch, cfg)
 	if err != nil {
 		cfg.Errorf("%s", err)
 		return nil

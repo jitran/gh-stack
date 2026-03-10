@@ -12,7 +12,7 @@
     },
     "repository": {
       "type": "string",
-      "description": "The owner/name slug of the repository (e.g. 'github/gh-stack')."
+      "description": "The host:owner/name of the repository (e.g. 'github.com:github/gh-stack')."
     },
     "stacks": {
       "type": "array",
@@ -29,14 +29,6 @@
         "id": {
           "type": "string",
           "description": "Identifier for this stack, populated from the API when available."
-        },
-        "state": {
-          "type": "string",
-          "description": "State of the stack from the API (e.g. 'open', 'merged')."
-        },
-        "open": {
-          "type": "boolean",
-          "description": "Whether the stack is open or closed."
         },
         "trunk": {
           "$ref": "#/$defs/branchRef",
@@ -74,25 +66,25 @@
     },
     "pullRequestRef": {
       "type": "object",
-      "description": "A snapshot of relatively immutable pull request metadata.",
+      "description": "A snapshot of pull request metadata.",
       "required": ["number"],
       "properties": {
         "number": {
           "type": "integer",
-          "description": "The PR number."
+          "description": "The PR number, scoped to the repository."
         },
         "id": {
           "type": "string",
-          "description": "The PR node ID (GraphQL ID)."
+          "description": "The PR global node ID."
         },
         "url": {
           "type": "string",
           "format": "uri",
           "description": "Direct URL to the pull request."
         },
-        "title": {
-          "type": "string",
-          "description": "The PR title at the time it was recorded."
+        "merged": {
+          "type": "boolean",
+          "description": "Whether the pull request has been merged."
         }
       }
     }

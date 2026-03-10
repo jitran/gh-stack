@@ -18,7 +18,7 @@ type PullRequestRef struct {
 	Number int    `json:"number"`
 	ID     string `json:"id,omitempty"`
 	URL    string `json:"url,omitempty"`
-	Title  string `json:"title,omitempty"`
+	Merged bool   `json:"merged,omitempty"`
 }
 
 // BranchRef represents a branch and its associated commit hash.
@@ -35,8 +35,6 @@ type BranchRef struct {
 // Stack represents a single stack of branches.
 type Stack struct {
 	ID       string      `json:"id,omitempty"`
-	State    string      `json:"state,omitempty"`
-	Open     bool        `json:"open,omitempty"`
 	Trunk    BranchRef   `json:"trunk"`
 	Branches []BranchRef `json:"branches"`
 }

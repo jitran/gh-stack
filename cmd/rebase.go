@@ -91,7 +91,7 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 		}
 	}
 
-	s, err := sf.ResolveStack(currentBranch, cfg)
+	s, err := resolveStack(sf, currentBranch, cfg)
 	if err != nil {
 		cfg.Errorf("%s", err)
 		return nil
@@ -207,6 +207,9 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 		base, _ := git.HeadSHA(parent)
 		s.Branches[i].Base = base
 	}
+
+	syncStackPRs(cfg, s)
+
 	_ = stack.Save(gitDir, sf)
 
 	rangeDesc := "All branches in stack"
@@ -238,7 +241,7 @@ func continueRebase(cfg *config.Config, gitDir string) error {
 
 	// Use the saved original branch to find the stack, since git may be in
 	// a detached HEAD state during an active rebase.
-	s, err := sf.ResolveStack(state.OriginalBranch, cfg)
+	s, err := resolveStack(sf, state.OriginalBranch, cfg)
 	if err != nil {
 		return err
 	}
@@ -323,6 +326,9 @@ func continueRebase(cfg *config.Config, gitDir string) error {
 		base, _ := git.HeadSHA(parent)
 		s.Branches[i].Base = base
 	}
+
+	syncStackPRs(cfg, s)
+
 	_ = stack.Save(gitDir, sf)
 
 	cfg.Printf("All branches in stack rebased locally with %s", s.Trunk.Branch)

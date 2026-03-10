@@ -170,7 +170,7 @@ func loadCurrentStack(cfg *config.Config) (*stack.Stack, string, error) {
 		return nil, "", fmt.Errorf("%s", errMsg)
 	}
 
-	s, err := sf.ResolveStack(currentBranch, cfg)
+	s, err := resolveStack(sf, currentBranch, cfg)
 	if err != nil {
 		cfg.Errorf("%s", err)
 		return nil, "", err

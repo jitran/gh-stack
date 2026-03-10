@@ -1,4 +1,4 @@
-package stack
+package cmd
 
 import (
 	"fmt"
@@ -7,15 +7,16 @@ import (
 	"github.com/cli/go-gh/v2/pkg/prompter"
 	"github.com/github/gh-stack/internal/config"
 	"github.com/github/gh-stack/internal/git"
+	"github.com/github/gh-stack/internal/stack"
 )
 
-// ResolveStack finds the stack for the given branch, handling ambiguity when
+// resolveStack finds the stack for the given branch, handling ambiguity when
 // a branch (typically a trunk) belongs to multiple stacks. If exactly one
 // stack matches, it is returned directly. If multiple stacks match, the user
 // is prompted to select one and the working tree is switched to the top branch
 // of the selected stack. Returns nil with no error if no stack contains the
 // branch.
-func (sf *StackFile) ResolveStack(branch string, cfg *config.Config) (*Stack, error) {
+func resolveStack(sf *stack.StackFile, branch string, cfg *config.Config) (*stack.Stack, error) {
 	stacks := sf.FindAllStacksForBranch(branch)
 
 	switch len(stacks) {
@@ -55,4 +56,34 @@ func (sf *StackFile) ResolveStack(branch string, cfg *config.Config) (*Stack, er
 	}
 
 	return s, nil
+}
+
+// syncStackPRs discovers and updates pull request metadata for branches in a stack.
+// For each branch, it queries GitHub for the most recent PR and updates the
+// PullRequestRef including merge status. Branches with already-merged PRs are skipped.
+func syncStackPRs(cfg *config.Config, s *stack.Stack) {
+	client, err := cfg.GitHubClient()
+	if err != nil {
+		return
+	}
+
+	for i := range s.Branches {
+		b := &s.Branches[i]
+
+		if b.PullRequest != nil && b.PullRequest.Merged {
+			continue
+		}
+
+		pr, err := client.FindAnyPRForBranch(b.Branch)
+		if err != nil || pr == nil {
+			continue
+		}
+
+		b.PullRequest = &stack.PullRequestRef{
+			Number: pr.Number,
+			ID:     pr.ID,
+			URL:    pr.URL,
+			Merged: pr.Merged,
+		}
+	}
 }

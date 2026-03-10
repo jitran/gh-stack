@@ -52,7 +52,7 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 		return nil
 	}
 
-	s, err := sf.ResolveStack(currentBranch, cfg)
+	s, err := resolveStack(sf, currentBranch, cfg)
 	if err != nil {
 		cfg.Errorf("%s", err)
 		return nil
@@ -118,7 +118,6 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 				Number: newPR.Number,
 				ID:     newPR.ID,
 				URL:    newPR.URL,
-				Title:  newPR.Title,
 			}
 		} else {
 			// Update base if needed
@@ -136,7 +135,6 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 					Number: pr.Number,
 					ID:     pr.ID,
 					URL:    pr.URL,
-					Title:  pr.Title,
 				}
 			}
 		}
@@ -152,7 +150,7 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 	fmt.Fprintf(cfg.Err, "  Once the GitHub Stacks API is available, PRs will be automatically\n")
 	fmt.Fprintf(cfg.Err, "  grouped into a Stack.\n")
 
-	// Update base commit hashes
+	// Update base commit hashes and sync PR state
 	for i := range s.Branches {
 		parent := s.Trunk.Branch
 		if i > 0 {
@@ -162,6 +160,7 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 			s.Branches[i].Base = base
 		}
 	}
+	syncStackPRs(cfg, s)
 
 	if err := stack.Save(gitDir, sf); err != nil {
 		cfg.Errorf("failed to save stack state: %s", err)

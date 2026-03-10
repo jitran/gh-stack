@@ -17,6 +17,7 @@ type PullRequest struct {
 	HeadRefName string
 	BaseRefName string
 	IsDraft     bool
+	Merged      bool
 }
 
 // Client wraps GitHub API operations.
@@ -82,6 +83,46 @@ func (c *Client) FindPRForBranch(branch string) (*PullRequest, error) {
 		HeadRefName: n.HeadRefName,
 		BaseRefName: n.BaseRefName,
 		IsDraft:     n.IsDraft,
+		Merged:      n.Merged,
+	}, nil
+}
+
+// FindAnyPRForBranch finds the most recent PR by head branch name regardless of state.
+func (c *Client) FindAnyPRForBranch(branch string) (*PullRequest, error) {
+	var query struct {
+		Repository struct {
+			PullRequests struct {
+				Nodes []PullRequest
+			} `graphql:"pullRequests(headRefName: $head, last: 1)"`
+		} `graphql:"repository(owner: $owner, name: $name)"`
+	}
+
+	variables := map[string]interface{}{
+		"owner": graphql.String(c.owner),
+		"name":  graphql.String(c.repo),
+		"head":  graphql.String(branch),
+	}
+
+	if err := c.gql.Query("FindAnyPRForBranch", &query, variables); err != nil {
+		return nil, fmt.Errorf("querying PRs: %w", err)
+	}
+
+	nodes := query.Repository.PullRequests.Nodes
+	if len(nodes) == 0 {
+		return nil, nil
+	}
+
+	n := nodes[0]
+	return &PullRequest{
+		ID:          n.ID,
+		Number:      n.Number,
+		Title:       n.Title,
+		State:       n.State,
+		URL:         n.URL,
+		HeadRefName: n.HeadRefName,
+		BaseRefName: n.BaseRefName,
+		IsDraft:     n.IsDraft,
+		Merged:      n.Merged,
 	}, nil
 }
 

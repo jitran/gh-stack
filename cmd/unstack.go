@@ -55,7 +55,7 @@ func runUnstack(cfg *config.Config, opts *unstackOptions) error {
 		}
 	}
 
-	s, err := sf.ResolveStack(target, cfg)
+	s, err := resolveStack(sf, target, cfg)
 	if err != nil {
 		cfg.Errorf("%s", err)
 		return nil
