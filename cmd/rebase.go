@@ -91,9 +91,20 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 		}
 	}
 
-	s := sf.FindStackForBranch(currentBranch)
+	s, err := sf.ResolveStack(currentBranch, cfg)
+	if err != nil {
+		cfg.Errorf("%s", err)
+		return nil
+	}
 	if s == nil {
 		cfg.Errorf("no stack found for branch %s", currentBranch)
+		return nil
+	}
+
+	// Re-read current branch in case disambiguation caused a checkout
+	currentBranch, err = git.CurrentBranch()
+	if err != nil {
+		cfg.Errorf("failed to get current branch: %s", err)
 		return nil
 	}
 
@@ -223,7 +234,10 @@ func continueRebase(cfg *config.Config, gitDir string) error {
 
 	// Use the saved original branch to find the stack, since git may be in
 	// a detached HEAD state during an active rebase.
-	s := sf.FindStackForBranch(state.OriginalBranch)
+	s, err := sf.ResolveStack(state.OriginalBranch, cfg)
+	if err != nil {
+		return err
+	}
 	if s == nil {
 		return fmt.Errorf("no stack found for branch %s", state.OriginalBranch)
 	}

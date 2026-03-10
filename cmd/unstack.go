@@ -55,7 +55,11 @@ func runUnstack(cfg *config.Config, opts *unstackOptions) error {
 		}
 	}
 
-	s := sf.FindStackForBranch(target)
+	s, err := sf.ResolveStack(target, cfg)
+	if err != nil {
+		cfg.Errorf("%s", err)
+		return nil
+	}
 	if s == nil {
 		cfg.Errorf("branch %q is not part of a stack", target)
 		return nil

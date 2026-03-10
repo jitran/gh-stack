@@ -78,7 +78,7 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 
 	// Don't allow initializing a stack if the current branch is already part of another stack
 	if currentBranch != "" {
-		if existing := sf.FindStackForBranch(currentBranch); existing != nil {
+		if stacks := sf.FindAllStacksForBranch(currentBranch); len(stacks) > 0 {
 			cfg.Errorf("current branch %q is already part of a stack", currentBranch)
 			return nil
 		}

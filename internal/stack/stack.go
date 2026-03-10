@@ -25,6 +25,16 @@ type Stack struct {
 	Branches []BranchRef `json:"branches"`
 }
 
+// DisplayName returns a human-readable chain representation of the stack.
+// Format: (trunk) <- branch1 <- branch2 <- branch3
+func (s *Stack) DisplayName() string {
+	result := "(" + s.Trunk.Branch + ")"
+	for _, b := range s.Branches {
+		result += " <- " + b.Branch
+	}
+	return result
+}
+
 // BranchNames returns the list of branch names in order.
 func (s *Stack) BranchNames() []string {
 	names := make([]string, len(s.Branches))
@@ -69,14 +79,15 @@ type StackFile struct {
 	Stacks        []Stack `json:"stacks"`
 }
 
-// FindStackForBranch returns the stack that contains the given branch, or nil.
-func (sf *StackFile) FindStackForBranch(branch string) *Stack {
+// FindAllStacksForBranch returns all stacks that contain the given branch.
+func (sf *StackFile) FindAllStacksForBranch(branch string) []*Stack {
+	var stacks []*Stack
 	for i := range sf.Stacks {
 		if sf.Stacks[i].Contains(branch) {
-			return &sf.Stacks[i]
+			stacks = append(stacks, &sf.Stacks[i])
 		}
 	}
-	return nil
+	return stacks
 }
 
 // ValidateNoDuplicateBranch checks that the branch is not already in any stack.

@@ -52,9 +52,20 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 		return nil
 	}
 
-	s := sf.FindStackForBranch(currentBranch)
+	s, err := sf.ResolveStack(currentBranch, cfg)
+	if err != nil {
+		cfg.Errorf("%s", err)
+		return nil
+	}
 	if s == nil {
 		cfg.Errorf("current branch %q is not part of a stack", currentBranch)
+		return nil
+	}
+
+	// Re-read current branch in case disambiguation caused a checkout
+	currentBranch, err = git.CurrentBranch()
+	if err != nil {
+		cfg.Errorf("failed to get current branch: %s", err)
 		return nil
 	}
 

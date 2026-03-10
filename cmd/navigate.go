@@ -170,11 +170,23 @@ func loadCurrentStack(cfg *config.Config) (*stack.Stack, string, error) {
 		return nil, "", fmt.Errorf("%s", errMsg)
 	}
 
-	s := sf.FindStackForBranch(currentBranch)
+	s, err := sf.ResolveStack(currentBranch, cfg)
+	if err != nil {
+		cfg.Errorf("%s", err)
+		return nil, "", err
+	}
 	if s == nil {
 		errMsg := fmt.Sprintf("current branch %q is not part of a stack", currentBranch)
 		cfg.Errorf("current branch %q is not part of a stack", currentBranch)
 		cfg.Printf("Checkout an existing stack using %s or create a new stack using %s", cfg.ColorCyan("gh stack checkout"), cfg.ColorCyan("gh stack init"))
+		return nil, "", fmt.Errorf("%s", errMsg)
+	}
+
+	// Re-read current branch in case disambiguation caused a checkout
+	currentBranch, err = git.CurrentBranch()
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to get current branch: %s", err)
+		cfg.Errorf("%s", errMsg)
 		return nil, "", fmt.Errorf("%s", errMsg)
 	}
 
