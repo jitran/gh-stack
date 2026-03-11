@@ -106,8 +106,23 @@ func Push(remote string, branches []string, force, atomic bool) error {
 }
 
 // Rebase rebases the current branch onto the given base.
+// If rerere resolves all conflicts automatically, the rebase continues
+// without user intervention.
 func Rebase(base string) error {
-	return runSilent("rebase", base)
+	err := runSilent("rebase", base)
+	if err == nil {
+		return nil
+	}
+	return tryAutoResolveRebase(err)
+}
+
+// EnableRerere enables git rerere (reuse recorded resolution) and
+// rerere.autoupdate (auto-stage resolved files) for the repository.
+func EnableRerere() error {
+	if err := runSilent("config", "rerere.enabled", "true"); err != nil {
+		return err
+	}
+	return runSilent("config", "rerere.autoupdate", "true")
 }
 
 // RebaseOnto rebases a branch using the three-argument form:
@@ -117,17 +132,57 @@ func Rebase(base string) error {
 // This replays commits after oldBase from branch onto newBase. It is used
 // when a prior branch was squash-merged and the normal rebase cannot detect
 // which commits have already been applied.
+// If rerere resolves all conflicts automatically, the rebase continues
+// without user intervention.
 func RebaseOnto(newBase, oldBase, branch string) error {
-	return runSilent("rebase", "--onto", newBase, oldBase, branch)
+	err := runSilent("rebase", "--onto", newBase, oldBase, branch)
+	if err == nil {
+		return nil
+	}
+	return tryAutoResolveRebase(err)
 }
 
 // RebaseContinue continues an in-progress rebase.
 // It sets GIT_EDITOR=true to prevent git from opening an interactive editor
 // for the commit message, which would cause the command to hang.
+// If rerere resolves subsequent conflicts automatically, the rebase continues
+// without user intervention.
 func RebaseContinue() error {
+	err := rebaseContinueOnce()
+	if err == nil {
+		return nil
+	}
+	return tryAutoResolveRebase(err)
+}
+
+// rebaseContinueOnce runs a single git rebase --continue without auto-resolve.
+func rebaseContinueOnce() error {
 	cmd := exec.Command("git", "rebase", "--continue")
 	cmd.Env = append(os.Environ(), "GIT_EDITOR=true")
 	return cmd.Run()
+}
+
+// tryAutoResolveRebase checks whether rerere has resolved all conflicts
+// from a failed rebase. If so, it auto-continues the rebase (potentially
+// multiple times for multi-commit rebases). Returns originalErr if any
+// conflicts remain that need manual resolution.
+func tryAutoResolveRebase(originalErr error) error {
+	for i := 0; i < 1000; i++ {
+		if !IsRebaseInProgress() {
+			return nil
+		}
+		conflicts, _ := ConflictedFiles()
+		if len(conflicts) > 0 {
+			return originalErr
+		}
+		// Rerere resolved all conflicts — auto-continue.
+		if rebaseContinueOnce() == nil {
+			return nil
+		}
+		// Continue hit another conflicting commit; loop to check
+		// if rerere resolved that one too.
+	}
+	return originalErr
 }
 
 // RebaseAbort aborts an in-progress rebase.

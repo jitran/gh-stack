@@ -53,6 +53,10 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 
 	// Determine trunk branch
 	trunk := opts.base
+
+	// Enable git rerere so conflict resolutions are remembered.
+	_ = git.EnableRerere()
+
 	if trunk == "" {
 		trunk, err = git.DefaultBranch()
 		if err != nil {

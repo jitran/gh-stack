@@ -74,6 +74,10 @@ func runSync(cfg *config.Config, _ *syncOptions) error {
 
 	// --- Step 1: Fetch ---
 	cfg.Printf("Fetching origin ...")
+
+	// Enable git rerere so conflict resolutions are remembered.
+	_ = git.EnableRerere()
+
 	if err := git.Fetch("origin"); err != nil {
 		cfg.Warningf("Failed to fetch origin: %v", err)
 	} else {
@@ -188,13 +192,20 @@ func runSync(cfg *config.Config, _ *syncOptions) error {
 				cfg.Successf("Rebased %s onto %s (squash-merge detected)", br.Branch, newBase)
 				ontoOldBase = originalRefs[br.Branch]
 			} else {
-				if err := git.CheckoutBranch(br.Branch); err != nil {
-					cfg.Errorf("Failed to checkout %s: %v", br.Branch, err)
-					conflicted = true
-					break
+				var rebaseErr error
+				if i > 0 {
+					// Use --onto to replay only this branch's unique commits.
+					rebaseErr = git.RebaseOnto(base, originalRefs[base], br.Branch)
+				} else {
+					if err := git.CheckoutBranch(br.Branch); err != nil {
+						cfg.Errorf("Failed to checkout %s: %v", br.Branch, err)
+						conflicted = true
+						break
+					}
+					rebaseErr = git.Rebase(base)
 				}
 
-				if err := git.Rebase(base); err != nil {
+				if rebaseErr != nil {
 					// Conflict detected — abort and restore everything
 					if git.IsRebaseInProgress() {
 						_ = git.RebaseAbort()

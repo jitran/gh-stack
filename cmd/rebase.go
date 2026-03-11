@@ -111,6 +111,10 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 	}
 
 	cfg.Printf("Fetching origin ...")
+
+	// Enable git rerere so conflict resolutions are remembered.
+	_ = git.EnableRerere()
+
 	if err := git.Fetch("origin"); err != nil {
 		cfg.Warningf("Failed to fetch origin: %v", err)
 	} else {
@@ -227,11 +231,22 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 		} else {
 			cfg.Printf("Rebasing %s onto %s ...", br.Branch, base)
 
-			if err := git.CheckoutBranch(br.Branch); err != nil {
-				return fmt.Errorf("checking out %s: %w", br.Branch, err)
+			var rebaseErr error
+			if absIdx > 0 {
+				// Use --onto to replay only this branch's unique commits.
+				// Without --onto, git may try to replay commits shared with
+				// the parent, causing duplicate-patch conflicts when the
+				// parent's rebase rewrote those commits.
+				rebaseErr = git.RebaseOnto(base, originalRefs[base], br.Branch)
+			} else {
+				if err := git.CheckoutBranch(br.Branch); err != nil {
+					return fmt.Errorf("checking out %s: %w", br.Branch, err)
+				}
+				// Use regular rebase for the first branch.
+				rebaseErr = git.Rebase(base)
 			}
 
-			if err := git.Rebase(base); err != nil {
+			if rebaseErr != nil {
 				cfg.Warningf("Rebasing %s onto %s ... conflict", br.Branch, base)
 
 				remaining := make([]string, 0)
@@ -410,12 +425,19 @@ func continueRebase(cfg *config.Config, gitDir string) error {
 		} else {
 			cfg.Printf("Rebasing %s onto %s ...", branchName, base)
 
-			if err := git.CheckoutBranch(branchName); err != nil {
-				cfg.Errorf("checking out %s: %s", branchName, err)
-				return nil
+			var rebaseErr error
+			if idx > 0 {
+				// Use --onto to replay only this branch's unique commits.
+				rebaseErr = git.RebaseOnto(base, state.OriginalRefs[base], branchName)
+			} else {
+				if err := git.CheckoutBranch(branchName); err != nil {
+					cfg.Errorf("checking out %s: %s", branchName, err)
+					return nil
+				}
+				rebaseErr = git.Rebase(base)
 			}
 
-			if err := git.Rebase(base); err != nil {
+			if rebaseErr != nil {
 				remainIdx := -1
 				for ri, rb := range state.RemainingBranches {
 					if rb == branchName {
