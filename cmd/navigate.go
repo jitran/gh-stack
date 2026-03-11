@@ -124,6 +124,11 @@ func runNavigateToEnd(cfg *config.Config, top bool) error {
 		return nil
 	}
 
+	if len(s.Branches) == 0 {
+		cfg.Errorf("stack has no branches")
+		return nil
+	}
+
 	var target string
 	if top {
 		target = s.Branches[len(s.Branches)-1].Branch

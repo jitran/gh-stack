@@ -172,6 +172,10 @@ func runPager(cfg *config.Config, content string) error {
 	}
 
 	args := strings.Fields(pagerCmd)
+	if len(args) == 0 {
+		_, err := fmt.Fprint(cfg.Out, content)
+		return err
+	}
 	if args[0] == "less" {
 		hasR := false
 		for _, a := range args[1:] {
@@ -250,16 +254,16 @@ func viewWeb(cfg *config.Config, s *stack.Stack) error {
 		}
 		url := fmt.Sprintf("https://github.com/%s/%s/pull/%d", repo.Owner, repo.Name, pr.Number)
 		if err := b.Browse(url); err != nil {
-			cfg.Warningf("failed to open %s: %v\n", url, err)
+			cfg.Warningf("failed to open %s: %v", url, err)
 		} else {
 			opened++
 		}
 	}
 
 	if opened == 0 {
-		cfg.Printf("No PRs found to open in browser.\n")
+		cfg.Printf("No PRs found to open in browser.")
 	} else {
-		cfg.Successf("Opened %d PRs in browser\n", opened)
+		cfg.Successf("Opened %d PRs in browser", opened)
 	}
 
 	return nil

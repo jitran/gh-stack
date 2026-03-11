@@ -157,7 +157,11 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 
 	originalRefs := make(map[string]string)
 	for _, b := range s.Branches {
-		sha, _ := git.HeadSHA(b.Branch)
+		sha, err := git.HeadSHA(b.Branch)
+		if err != nil {
+			cfg.Errorf("failed to resolve HEAD SHA for %s: %s", b.Branch, err)
+			return nil
+		}
 		originalRefs[b.Branch] = sha
 	}
 
@@ -213,7 +217,9 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 					UseOnto:            true,
 					OntoOldBase:        originalRefs[br.Branch],
 				}
-				saveRebaseState(gitDir, state)
+				if err := saveRebaseState(gitDir, state); err != nil {
+					cfg.Warningf("failed to save rebase state: %s", err)
+				}
 
 				printConflictDetails(cfg, newBase)
 				cfg.Printf("")
@@ -261,7 +267,9 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 					OriginalBranch:     currentBranch,
 					OriginalRefs:       originalRefs,
 				}
-				saveRebaseState(gitDir, state)
+				if err := saveRebaseState(gitDir, state); err != nil {
+					cfg.Warningf("failed to save rebase state: %s", err)
+				}
 
 				printConflictDetails(cfg, base)
 				cfg.Printf("")
@@ -408,7 +416,9 @@ func continueRebase(cfg *config.Config, gitDir string) error {
 				state.CurrentBranchIndex = idx
 				state.ConflictBranch = branchName
 				state.OntoOldBase = state.OriginalRefs[branchName]
-				saveRebaseState(gitDir, state)
+				if err := saveRebaseState(gitDir, state); err != nil {
+					cfg.Warningf("failed to save rebase state: %s", err)
+				}
 
 				cfg.Warningf("Rebasing %s onto %s ... conflict", branchName, newBase)
 				printConflictDetails(cfg, newBase)
@@ -448,7 +458,9 @@ func continueRebase(cfg *config.Config, gitDir string) error {
 				state.RemainingBranches = state.RemainingBranches[remainIdx+1:]
 				state.CurrentBranchIndex = idx
 				state.ConflictBranch = branchName
-				saveRebaseState(gitDir, state)
+				if err := saveRebaseState(gitDir, state); err != nil {
+					cfg.Warningf("failed to save rebase state: %s", err)
+				}
 
 				cfg.Warningf("Rebasing %s onto %s ... conflict", branchName, base)
 				printConflictDetails(cfg, base)
@@ -509,21 +521,41 @@ func abortRebase(cfg *config.Config, gitDir string) error {
 		_ = git.RebaseAbort()
 	}
 
+	var restoreErrors []string
 	for branch, sha := range state.OriginalRefs {
-		_ = git.CheckoutBranch(branch)
-		_ = git.ResetHard(sha)
+		if err := git.CheckoutBranch(branch); err != nil {
+			restoreErrors = append(restoreErrors, fmt.Sprintf("checkout %s: %s", branch, err))
+			continue
+		}
+		if err := git.ResetHard(sha); err != nil {
+			restoreErrors = append(restoreErrors, fmt.Sprintf("reset %s: %s", branch, err))
+		}
 	}
 
 	_ = git.CheckoutBranch(state.OriginalBranch)
 	clearRebaseState(gitDir)
-	cfg.Successf("Rebase aborted and branches restored")
 
+	if len(restoreErrors) > 0 {
+		cfg.Warningf("Rebase aborted but some branches could not be fully restored:")
+		for _, e := range restoreErrors {
+			cfg.Printf("  %s", e)
+		}
+		return nil
+	}
+
+	cfg.Successf("Rebase aborted and branches restored")
 	return nil
 }
 
-func saveRebaseState(gitDir string, state *rebaseState) {
-	data, _ := json.MarshalIndent(state, "", "  ")
-	_ = os.WriteFile(filepath.Join(gitDir, rebaseStateFile), data, 0644)
+func saveRebaseState(gitDir string, state *rebaseState) error {
+	data, err := json.MarshalIndent(state, "", "  ")
+	if err != nil {
+		return fmt.Errorf("error serializing rebase state: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(gitDir, rebaseStateFile), data, 0644); err != nil {
+		return fmt.Errorf("error writing rebase state: %w", err)
+	}
+	return nil
 }
 
 func loadRebaseState(gitDir string) (*rebaseState, error) {

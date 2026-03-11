@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/cli/go-gh/v2/pkg/prompter"
 	"github.com/github/gh-stack/internal/config"
@@ -124,7 +123,11 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 		branches = opts.branches
 	} else {
 		// Interactive mode
-		p := prompter.New(os.Stdin, os.Stdout, os.Stderr)
+		if !cfg.IsInteractive() {
+			cfg.Errorf("interactive input required; provide branch names or use --adopt")
+			return nil
+		}
+		p := prompter.New(cfg.In, cfg.Out, cfg.Err)
 
 		if currentBranch != "" && currentBranch != trunk {
 			// Already on a non-trunk branch — offer to use it

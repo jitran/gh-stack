@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -197,8 +198,8 @@ func IsRebaseInProgress() bool {
 		return false
 	}
 	for _, dir := range []string{"rebase-merge", "rebase-apply"} {
-		cmd := exec.Command("test", "-d", gitDir+"/"+dir)
-		if cmd.Run() == nil {
+		rebasePath := filepath.Join(gitDir, dir)
+		if info, err := os.Stat(rebasePath); err == nil && info.IsDir() {
 			return true
 		}
 	}

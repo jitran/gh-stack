@@ -9,15 +9,15 @@ import (
 
 // PullRequest represents a GitHub pull request.
 type PullRequest struct {
-	ID          string
-	Number      int
-	Title       string
-	State       string
-	URL         string
-	HeadRefName string
-	BaseRefName string
-	IsDraft     bool
-	Merged      bool
+	ID          string `graphql:"id"`
+	Number      int    `graphql:"number"`
+	Title       string `graphql:"title"`
+	State       string `graphql:"state"`
+	URL         string `graphql:"url"`
+	HeadRefName string `graphql:"headRefName"`
+	BaseRefName string `graphql:"baseRefName"`
+	IsDraft     bool   `graphql:"isDraft"`
+	Merged      bool   `graphql:"merged"`
 }
 
 // Client wraps GitHub API operations.

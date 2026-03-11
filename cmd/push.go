@@ -78,11 +78,11 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 	// Push all branches
 	for _, b := range s.Branches {
 		if opts.dryRun {
-			cfg.Printf("Would push %s\n", b.Branch)
+			cfg.Printf("Would push %s", b.Branch)
 			continue
 		}
 
-		cfg.Printf("Pushing %s...\n", b.Branch)
+		cfg.Printf("Pushing %s...", b.Branch)
 		if err := git.Push("origin", []string{b.Branch}, opts.force, false); err != nil {
 			cfg.Errorf("failed to push %s: %s", b.Branch, err)
 			return nil
@@ -99,7 +99,7 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 
 		pr, err := client.FindPRForBranch(b.Branch)
 		if err != nil {
-			cfg.Warningf("failed to check PR for %s: %v\n", b.Branch, err)
+			cfg.Warningf("failed to check PR for %s: %v", b.Branch, err)
 			continue
 		}
 
@@ -110,10 +110,10 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 
 			newPR, createErr := client.CreatePR(baseBranch, b.Branch, title, body, opts.draft)
 			if createErr != nil {
-				cfg.Warningf("failed to create PR for %s: %v\n", b.Branch, createErr)
+				cfg.Warningf("failed to create PR for %s: %v", b.Branch, createErr)
 				continue
 			}
-			cfg.Successf("Created PR #%d for %s\n", newPR.Number, b.Branch)
+			cfg.Successf("Created PR #%d for %s", newPR.Number, b.Branch)
 			s.Branches[i].PullRequest = &stack.PullRequestRef{
 				Number: newPR.Number,
 				ID:     newPR.ID,
@@ -123,12 +123,12 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 			// Update base if needed
 			if pr.BaseRefName != baseBranch {
 				if err := client.UpdatePRBase(pr.ID, baseBranch); err != nil {
-					cfg.Warningf("failed to update PR #%d base: %v\n", pr.Number, err)
+					cfg.Warningf("failed to update PR #%d base: %v", pr.Number, err)
 				} else {
-					cfg.Successf("Updated PR #%d base to %s\n", pr.Number, baseBranch)
+					cfg.Successf("Updated PR #%d base to %s", pr.Number, baseBranch)
 				}
 			} else {
-				cfg.Printf("PR #%d for %s is up to date\n", pr.Number, b.Branch)
+				cfg.Printf("PR #%d for %s is up to date", pr.Number, b.Branch)
 			}
 			if s.Branches[i].PullRequest == nil {
 				s.Branches[i].PullRequest = &stack.PullRequestRef{
@@ -146,7 +146,7 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 	// or we can add a flag to the existing PR API to incrementally build the stack.
 	//
 	// For now, the PRs are pushed and created individually but are NOT linked as a formal stack on GitHub.
-	cfg.Warningf("Stacked PRs is not yet implemented — PRs were created individually.\n")
+	cfg.Warningf("Stacked PRs is not yet implemented — PRs were created individually.")
 	fmt.Fprintf(cfg.Err, "  Once the GitHub Stacks API is available, PRs will be automatically\n")
 	fmt.Fprintf(cfg.Err, "  grouped into a Stack.\n")
 
@@ -170,6 +170,6 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 		return nil
 	}
 
-	cfg.Successf("Pushed and synced %d branches\n", len(s.Branches))
+	cfg.Successf("Pushed and synced %d branches", len(s.Branches))
 	return nil
 }

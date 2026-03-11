@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -15,9 +14,9 @@ import (
 // Config holds shared state for all commands.
 type Config struct {
 	Terminal term.Term
-	Out      io.Writer
-	Err      io.Writer
-	In       io.Reader
+	Out      *os.File
+	Err      *os.File
+	In       *os.File
 
 	ColorSuccess func(string) string
 	ColorError   func(string) string
@@ -34,8 +33,8 @@ func New() *Config {
 	terminal := term.FromEnv()
 	cfg := &Config{
 		Terminal: terminal,
-		Out:      terminal.Out(),
-		Err:      terminal.ErrOut(),
+		Out:      os.Stdout,
+		Err:      os.Stderr,
 		In:       os.Stdin,
 	}
 
