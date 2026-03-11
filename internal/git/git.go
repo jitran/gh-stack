@@ -325,6 +325,94 @@ func Log(ref string, maxCount int) ([]CommitInfo, error) {
 	return commits, nil
 }
 
+// LogRange returns commits in the range base..head (commits reachable from head
+// but not from base). This is useful for seeing all commits unique to a branch.
+func LogRange(base, head string) ([]CommitInfo, error) {
+	format := "%H\t%s\t%at"
+	rangeSpec := base + ".." + head
+	output, err := run("log", rangeSpec, "--format="+format)
+	if err != nil {
+		return nil, err
+	}
+	if output == "" {
+		return nil, nil
+	}
+
+	var commits []CommitInfo
+	for _, line := range strings.Split(output, "\n") {
+		parts := strings.SplitN(line, "\t", 3)
+		if len(parts) < 3 {
+			continue
+		}
+		ts, _ := strconv.ParseInt(parts[2], 10, 64)
+		commits = append(commits, CommitInfo{
+			SHA:     parts[0],
+			Subject: parts[1],
+			Time:    time.Unix(ts, 0),
+		})
+	}
+	return commits, nil
+}
+
+// DiffStatRange returns the total additions and deletions between two refs.
+func DiffStatRange(base, head string) (additions, deletions int, err error) {
+	output, err := run("diff", "--numstat", base+".."+head)
+	if err != nil {
+		return 0, 0, err
+	}
+	if output == "" {
+		return 0, 0, nil
+	}
+	for _, line := range strings.Split(output, "\n") {
+		parts := strings.Fields(line)
+		if len(parts) < 2 {
+			continue
+		}
+		// Binary files show "-" instead of numbers
+		if parts[0] == "-" {
+			continue
+		}
+		a, _ := strconv.Atoi(parts[0])
+		d, _ := strconv.Atoi(parts[1])
+		additions += a
+		deletions += d
+	}
+	return additions, deletions, nil
+}
+
+// FileDiffStat holds per-file diff statistics.
+type FileDiffStat struct {
+	Path      string
+	Additions int
+	Deletions int
+}
+
+// DiffStatFiles returns per-file additions and deletions between two refs.
+func DiffStatFiles(base, head string) ([]FileDiffStat, error) {
+	output, err := run("diff", "--numstat", base+".."+head)
+	if err != nil {
+		return nil, err
+	}
+	if output == "" {
+		return nil, nil
+	}
+	var files []FileDiffStat
+	for _, line := range strings.Split(output, "\n") {
+		parts := strings.Fields(line)
+		if len(parts) < 3 {
+			continue
+		}
+		a, _ := strconv.Atoi(parts[0])
+		d, _ := strconv.Atoi(parts[1])
+		files = append(files, FileDiffStat{
+			Path:      parts[2],
+			Additions: a,
+			Deletions: d,
+		})
+	}
+	return files, nil
+}
+
 // DeleteBranch deletes a local branch.
 func DeleteBranch(name string, force bool) error {
 	flag := "-d"

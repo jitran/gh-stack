@@ -8,10 +8,12 @@ import (
 	"strings"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/cli/go-gh/v2/pkg/browser"
 	"github.com/github/gh-stack/internal/config"
 	"github.com/github/gh-stack/internal/git"
 	"github.com/github/gh-stack/internal/stack"
+	"github.com/github/gh-stack/internal/tui/stackview"
 	"github.com/spf13/cobra"
 )
 
@@ -151,6 +153,51 @@ func shortPRSuffix(cfg *config.Config, b stack.BranchRef, owner, repo string) st
 }
 
 func viewFull(cfg *config.Config, s *stack.Stack, currentBranch string) error {
+	if !cfg.IsInteractive() {
+		return viewFullStatic(cfg, s, currentBranch)
+	}
+
+	return viewFullTUI(cfg, s, currentBranch)
+}
+
+func viewFullTUI(cfg *config.Config, s *stack.Stack, currentBranch string) error {
+	// Load enriched data for all branches
+	nodes := stackview.LoadBranchNodes(cfg, s, currentBranch)
+
+	// Reverse nodes so index 0 = top of stack (matches visual order)
+	reversed := make([]stackview.BranchNode, len(nodes))
+	for i, n := range nodes {
+		reversed[len(nodes)-1-i] = n
+	}
+
+	model := stackview.New(reversed, s.Trunk)
+
+	p := tea.NewProgram(
+		model,
+		tea.WithAltScreen(),
+		tea.WithMouseAllMotion(),
+	)
+
+	finalModel, err := p.Run()
+	if err != nil {
+		return fmt.Errorf("running TUI: %w", err)
+	}
+
+	// Checkout branch if user requested it
+	if m, ok := finalModel.(stackview.Model); ok {
+		if branch := m.CheckoutBranch(); branch != "" {
+			if err := git.CheckoutBranch(branch); err != nil {
+				cfg.Errorf("failed to checkout %s: %v", branch, err)
+			} else {
+				cfg.Successf("Switched to %s", branch)
+			}
+		}
+	}
+
+	return nil
+}
+
+func viewFullStatic(cfg *config.Config, s *stack.Stack, currentBranch string) error {
 	client, clientErr := cfg.GitHubClient()
 
 	var repoOwner, repoName string

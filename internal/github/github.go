@@ -210,6 +210,68 @@ func (c *Client) UpdatePRBase(prID, newBase string) error {
 	return c.gql.Mutate("UpdatePullRequest", &mutation, variables)
 }
 
+// PRDetails holds enriched pull request data for display in the TUI.
+type PRDetails struct {
+	Number        int
+	Title         string
+	State         string // OPEN, CLOSED, MERGED
+	URL           string
+	IsDraft       bool
+	Merged        bool
+	CommentsCount int
+}
+
+// FindPRDetailsForBranch fetches enriched PR data for display purposes.
+// Returns nil without error if no PR exists for the branch.
+func (c *Client) FindPRDetailsForBranch(branch string) (*PRDetails, error) {
+	var query struct {
+		Repository struct {
+			PullRequests struct {
+				Nodes []struct {
+					ID          string `graphql:"id"`
+					Number      int    `graphql:"number"`
+					Title       string `graphql:"title"`
+					State       string `graphql:"state"`
+					URL         string `graphql:"url"`
+					HeadRefName string `graphql:"headRefName"`
+					BaseRefName string `graphql:"baseRefName"`
+					IsDraft     bool   `graphql:"isDraft"`
+					Merged      bool   `graphql:"merged"`
+					Comments    struct {
+						TotalCount int `graphql:"totalCount"`
+					} `graphql:"comments"`
+				}
+			} `graphql:"pullRequests(headRefName: $head, last: 1)"`
+		} `graphql:"repository(owner: $owner, name: $name)"`
+	}
+
+	variables := map[string]interface{}{
+		"owner": graphql.String(c.owner),
+		"name":  graphql.String(c.repo),
+		"head":  graphql.String(branch),
+	}
+
+	if err := c.gql.Query("FindPRDetailsForBranch", &query, variables); err != nil {
+		return nil, fmt.Errorf("querying PR details: %w", err)
+	}
+
+	nodes := query.Repository.PullRequests.Nodes
+	if len(nodes) == 0 {
+		return nil, nil
+	}
+
+	n := nodes[0]
+	return &PRDetails{
+		Number:        n.Number,
+		Title:         n.Title,
+		State:         n.State,
+		URL:           n.URL,
+		IsDraft:       n.IsDraft,
+		Merged:        n.Merged,
+		CommentsCount: n.Comments.TotalCount,
+	}, nil
+}
+
 // DeleteStack deletes a stack on GitHub.
 // TODO: Implement once the stack API is available.
 func (c *Client) DeleteStack() error {
