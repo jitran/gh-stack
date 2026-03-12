@@ -167,6 +167,20 @@ func (sf *StackFile) FindAllStacksForBranch(branch string) []*Stack {
 	return stacks
 }
 
+// FindStackByPRNumber returns the first stack and branch whose PR number matches.
+// Returns nil, nil if no match is found.
+func (sf *StackFile) FindStackByPRNumber(prNumber int) (*Stack, *BranchRef) {
+	for i := range sf.Stacks {
+		for j := range sf.Stacks[i].Branches {
+			b := &sf.Stacks[i].Branches[j]
+			if b.PullRequest != nil && b.PullRequest.Number == prNumber {
+				return &sf.Stacks[i], b
+			}
+		}
+	}
+	return nil, nil
+}
+
 // ValidateNoDuplicateBranch checks that the branch is not already in any stack.
 func (sf *StackFile) ValidateNoDuplicateBranch(branch string) error {
 	for _, s := range sf.Stacks {

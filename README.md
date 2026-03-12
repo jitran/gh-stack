@@ -103,26 +103,27 @@ gh stack add  # prompts for name
 
 ### `gh stack checkout`
 
-Discover and check out an entire stack from a pull request or branch.
+Check out a locally tracked stack from a pull request number or branch name.
 
 ```
-gh stack checkout <pr-or-branch> [flags]
+gh stack checkout [<pr-or-branch>]
 ```
 
-Accepts a PR number, PR URL, or branch name. Traces the chain of PRs to discover the full stack, fetches all branches, and saves the stack to local tracking.
+Resolves the target against stacks stored in local tracking (`.git/gh-stack`). Accepts a PR number (e.g. `42`) or a branch name that belongs to a locally tracked stack. When run without arguments in an interactive terminal, shows a menu of all locally available stacks to choose from.
 
-> **Note:** This command is not yet implemented. Running it prints a notice.
-
-| Flag | Description |
-|------|-------------|
-| `--no-switch` | Fetch and track the stack without switching to the target branch |
+> **Note:** Server-side stack discovery is not yet implemented. This command currently only works with stacks that have been created locally (via `gh stack init`). Checking out a stack that is not tracked locally will require passing in an explicit branch name or PR number once the server API is available.
 
 **Examples:**
 
 ```sh
+# Check out a stack by PR number
 gh stack checkout 42
+
+# Check out a stack by branch name
 gh stack checkout feature-auth
-gh stack checkout https://github.com/owner/repo/pull/42
+
+# Interactive — select from locally tracked stacks
+gh stack checkout
 ```
 
 ### `gh stack rebase`
