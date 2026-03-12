@@ -149,6 +149,7 @@ func Load(gitDir string) (*StackFile, error) {
 		if errors.Is(err, os.ErrNotExist) {
 			return &StackFile{
 				SchemaVersion: schemaVersion,
+				Stacks:        []Stack{},
 			}, nil
 		}
 		return nil, fmt.Errorf("reading stack file: %w", err)
@@ -165,6 +166,9 @@ func Load(gitDir string) (*StackFile, error) {
 // Save writes the stack file to the given git directory.
 func Save(gitDir string, sf *StackFile) error {
 	sf.SchemaVersion = schemaVersion
+	if sf.Stacks == nil {
+		sf.Stacks = []Stack{}
+	}
 	data, err := json.MarshalIndent(sf, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshaling stack file: %w", err)
