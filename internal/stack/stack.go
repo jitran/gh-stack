@@ -35,6 +35,7 @@ type BranchRef struct {
 // Stack represents a single stack of branches.
 type Stack struct {
 	ID       string      `json:"id,omitempty"`
+	Prefix   string      `json:"prefix,omitempty"`
 	Trunk    BranchRef   `json:"trunk"`
 	Branches []BranchRef `json:"branches"`
 }

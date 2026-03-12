@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/cli/go-gh/v2/pkg/prompter"
+	"github.com/github/gh-stack/internal/branch"
 	"github.com/github/gh-stack/internal/config"
 	"github.com/github/gh-stack/internal/git"
 	"github.com/github/gh-stack/internal/stack"
@@ -14,6 +16,7 @@ type initOptions struct {
 	branches []string
 	base     string
 	adopt    bool
+	prefix   string
 }
 
 func InitCmd(cfg *config.Config) *cobra.Command {
@@ -39,6 +42,7 @@ Trunk defaults to default branch, unless specified otherwise.`,
 
 	cmd.Flags().StringVarP(&opts.base, "base", "b", "", "Trunk branch for stack (defaults to default branch)")
 	cmd.Flags().BoolVarP(&opts.adopt, "adopt", "a", false, "Track existing branches as part of a stack")
+	cmd.Flags().StringVarP(&opts.prefix, "prefix", "p", "", "Branch name prefix for the stack")
 
 	return cmd
 }
@@ -79,11 +83,15 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 
 	currentBranch, _ := git.CurrentBranch()
 
-	// Don't allow initializing a stack if the current branch is already part of another stack
+	// Don't allow initializing a stack if the current branch is a non-trunk
+	// member of another stack. Trunk branches (e.g. "main") can be shared
+	// across multiple stacks.
 	if currentBranch != "" {
-		if stacks := sf.FindAllStacksForBranch(currentBranch); len(stacks) > 0 {
-			cfg.Errorf("current branch %q is already part of a stack", currentBranch)
-			return nil
+		for _, s := range sf.FindAllStacksForBranch(currentBranch) {
+			if s.IndexOf(currentBranch) >= 0 {
+				cfg.Errorf("current branch %q is already part of a stack", currentBranch)
+				return nil
+			}
 		}
 	}
 
@@ -129,6 +137,17 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 		}
 		p := prompter.New(cfg.In, cfg.Out, cfg.Err)
 
+		// Step 1: Ask for prefix
+		if opts.prefix == "" {
+			prefixInput, err := p.Input("Set a branch prefix? (leave blank to skip)", "")
+			if err != nil {
+				cfg.Errorf("failed to read prefix: %s", err)
+				return nil
+			}
+			opts.prefix = strings.TrimSpace(prefixInput)
+		}
+
+		// Step 2: Ask for branch name
 		if currentBranch != "" && currentBranch != trunk {
 			// Already on a non-trunk branch — offer to use it
 			useCurrentBranch, err := p.Confirm(
@@ -149,15 +168,28 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 		}
 
 		if len(branches) == 0 {
-			branchName, err := p.Input("What branch would you like to use as the first layer of your stack?", "")
+			prompt := "What branch would you like to use as the first layer of your stack?"
+			if opts.prefix != "" {
+				prompt = fmt.Sprintf("Name the first branch, or leave blank to use %s", branch.NextNumberedName(opts.prefix, nil))
+			}
+			branchName, err := p.Input(prompt, "")
 			if err != nil {
 				cfg.Errorf("failed to read branch name: %s", err)
 				return nil
 			}
-			if branchName == "" {
+			branchName = strings.TrimSpace(branchName)
+
+			if branchName == "" && opts.prefix != "" {
+				// Auto-generate numbered branch name
+				branchName = branch.NextNumberedName(opts.prefix, nil)
+			} else if branchName == "" {
 				cfg.Errorf("branch name cannot be empty")
 				return nil
+			} else if opts.prefix != "" {
+				// Prepend prefix to the user-provided name
+				branchName = opts.prefix + "/" + branchName
 			}
+
 			if err := sf.ValidateNoDuplicateBranch(branchName); err != nil {
 				cfg.Errorf("branch %q already exists in a stack", branchName)
 				return nil
@@ -169,6 +201,14 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 				}
 			}
 			branches = []string{branchName}
+		}
+	}
+
+	// Validate prefix (from flag or interactive input)
+	if opts.prefix != "" {
+		if err := git.ValidateRefName(opts.prefix); err != nil {
+			cfg.Errorf("invalid prefix %q: must be a valid git ref component", opts.prefix)
+			return nil
 		}
 	}
 
@@ -185,6 +225,7 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 	}
 
 	newStack := stack.Stack{
+		Prefix: opts.prefix,
 		Trunk: stack.BranchRef{
 			Branch: trunk,
 			Head:   trunkSHA,

@@ -59,7 +59,7 @@ Initialize a new stack in the current repository.
 gh stack init [branches...] [flags]
 ```
 
-Creates an entry in `.git/gh-stack` to track stack state. In interactive mode (no arguments), prompts you to name branches and offers to use the current branch as the first layer. When explicit branch names are given, creates any that don't already exist (branching from the trunk). The trunk defaults to the repository's default branch unless overridden with `--base`.
+Creates an entry in `.git/gh-stack` to track stack state. In interactive mode (no arguments), prompts you to name branches and offers to use the current branch as the first layer. In interactive mode, you'll also be prompted to set an optional branch prefix for auto-naming (unless adopting existing branches). When explicit branch names are given, creates any that don't already exist (branching from the trunk). The trunk defaults to the repository's default branch unless overridden with `--base`.
 
 Enables `git rerere` automatically so that conflict resolutions are remembered across rebases.
 
@@ -67,6 +67,7 @@ Enables `git rerere` automatically so that conflict resolutions are remembered a
 |------|-------------|
 | `-b, --base <branch>` | Trunk branch for the stack (defaults to the repository's default branch) |
 | `-a, --adopt` | Adopt existing branches into a stack instead of creating new ones |
+| `-p, --prefix <string>` | Set a branch name prefix for the stack |
 
 **Examples:**
 
@@ -82,6 +83,9 @@ gh stack init --base develop feature-auth
 
 # Adopt existing branches into a stack
 gh stack init --adopt feature-auth feature-api
+
+# Set a prefix for auto-naming branches
+gh stack init -p feat
 ```
 
 ### `gh stack add`
@@ -89,16 +93,47 @@ gh stack init --adopt feature-auth feature-api
 Add a new branch on top of the current stack.
 
 ```
-gh stack add [branch]
+gh stack add [branch] [flags]
 ```
 
 Creates a new branch at the current HEAD, adds it to the top of the stack, and checks it out. Must be run while on the topmost branch of a stack. If no branch name is given, prompts for one.
 
+You can optionally stage changes and create a commit as part of the `add` flow. When `-m` is provided without an explicit branch name, the branch name is auto-generated. Auto-generated names use either numbered format (`prefix/01`, `prefix/02`) or date+slug format depending on prefix configuration and existing branch naming patterns.
+
+| Flag | Description |
+|------|-------------|
+| `-a, --all` | Stage all changes (including untracked files); requires `-m` |
+| `-u, --update` | Stage changes to tracked files only; requires `-m` |
+| `-m, --message <string>` | Create a commit with this message before creating the branch |
+
+> **Note:** `-a` and `-u` are mutually exclusive.
+
 **Examples:**
 
 ```sh
+# Create a branch by name
 gh stack add api-routes
-gh stack add  # prompts for name
+
+# Prompt for a branch name interactively
+gh stack add
+
+# Stage all changes, commit, and auto-generate the branch name
+gh stack add -am "Add login endpoint"
+
+# Stage only tracked files, commit, and auto-generate the branch name
+gh stack add -um "Fix auth bug"
+
+# Commit already-staged changes and auto-generate the branch name
+gh stack add -m "Add user model"
+
+# Stage all changes, commit, and use an explicit branch name
+gh stack add -am "Add tests" test-layer
+
+# Stage only tracked files, commit, and use an explicit branch name
+gh stack add -um "Update docs" docs-layer
+
+# Commit already-staged changes and use an explicit branch name
+gh stack add -m "Refactor utils" cleanup-layer
 ```
 
 ### `gh stack checkout`
@@ -355,3 +390,42 @@ gh stack push
 # 8. When the first PR is merged, sync the stack
 gh stack sync
 ```
+
+## Abbreviated workflow
+
+If you want to minimize keystrokes, use a branch prefix and the `-am` flags to fold staging, committing, and branch creation into a single command. Branch names are auto-generated from your commit messages.
+
+When a branch has no commits yet (e.g., right after `init`), `add -am` stages and commits directly on that branch instead of creating a new one. Once a branch has commits, `add -am` creates a new branch, checks it out, and commits there.
+
+```sh
+# 1. Start a stack with a prefix
+gh stack init -p feat
+#    → creates feat/01 and checks it out
+
+# 2. Write code for the first layer
+#    ... write code ...
+
+# 3. Stage and commit on the current branch
+gh stack add -am "Auth middleware"
+#    → feat/01 has no commits yet, so the commit lands here
+#      (no new branch is created)
+
+# 4. Write code for the next layer
+#    ... write code ...
+
+# 5. Create the next branch and commit
+gh stack add -am "API routes"
+#    → feat/01 already has commits, so a new branch feat/02 is
+#      created, checked out, and the commit lands there
+
+# 6. Keep going
+#    ... write code ...
+
+gh stack add -am "Frontend components"
+#    → feat/02 already has commits, creates feat/03 and commits there
+
+# 7. Push everything and create PRs
+gh stack push
+```
+
+Compared to the typical workflow, there's no need to name branches, run `git add`, or run `git commit` separately. Each `gh stack add -am "..."` does it all.

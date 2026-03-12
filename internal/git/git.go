@@ -446,3 +446,34 @@ func MergeFF(target string) error {
 func UpdateBranchRef(branch, sha string) error {
 	return runSilent("branch", "-f", branch, sha)
 }
+
+// StageAll stages all changes including untracked files (git add -A).
+func StageAll() error {
+	return runSilent("add", "-A")
+}
+
+// StageTracked stages changes to tracked files only (git add -u).
+func StageTracked() error {
+	return runSilent("add", "-u")
+}
+
+// HasStagedChanges returns true if there are staged changes ready to commit.
+func HasStagedChanges() bool {
+	err := runSilent("diff", "--cached", "--quiet")
+	// Exit code 1 means there are differences (staged changes exist).
+	return err != nil
+}
+
+// Commit creates a commit with the given message and returns the new HEAD SHA.
+func Commit(message string) (string, error) {
+	if err := runSilent("commit", "-m", message); err != nil {
+		return "", err
+	}
+	return run("rev-parse", "HEAD")
+}
+
+// ValidateRefName checks whether name is a valid git branch name.
+func ValidateRefName(name string) error {
+	_, err := run("check-ref-format", "--branch", name)
+	return err
+}
