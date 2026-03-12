@@ -2,11 +2,8 @@ package git
 
 import (
 	"context"
-	"errors"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -45,118 +42,6 @@ func runSilent(args ...string) error {
 	return cmd.Run()
 }
 
-// --- Delegated to cligit.Client ---
-
-// GitDir returns the path to the .git directory.
-func GitDir() (string, error) {
-	return client.GitDir(context.Background())
-}
-
-// CurrentBranch returns the name of the current branch.
-func CurrentBranch() (string, error) {
-	return client.CurrentBranch(context.Background())
-}
-
-// BranchExists returns whether a local branch with the given name exists.
-func BranchExists(name string) bool {
-	return client.HasLocalBranch(context.Background(), name)
-}
-
-// CheckoutBranch switches to the specified branch.
-func CheckoutBranch(name string) error {
-	return client.CheckoutBranch(context.Background(), name)
-}
-
-// Fetch fetches from the given remote.
-func Fetch(remote string) error {
-	return client.Fetch(context.Background(), remote, "")
-}
-
-// --- Custom operations not available in cligit ---
-
-// DefaultBranch returns the HEAD branch from origin.
-func DefaultBranch() (string, error) {
-	ref, err := run("symbolic-ref", "refs/remotes/origin/HEAD")
-	// fallback: if origin/HEAD doesn't exist, look for common default branch names
-	if err != nil {
-		for _, name := range []string{"main", "master"} {
-			if BranchExists(name) {
-				return name, nil
-			}
-		}
-		return "", err
-	}
-	return strings.TrimPrefix(ref, "refs/remotes/origin/"), nil
-}
-
-// CreateBranch creates a new branch from the given base.
-func CreateBranch(name, base string) error {
-	return runSilent("branch", name, base)
-}
-
-// Push pushes branches to a remote with optional force and atomic flags.
-func Push(remote string, branches []string, force, atomic bool) error {
-	args := []string{"push", remote}
-	if force {
-		args = append(args, "--force-with-lease")
-	}
-	if atomic {
-		args = append(args, "--atomic")
-	}
-	args = append(args, branches...)
-	return runSilent(args...)
-}
-
-// Rebase rebases the current branch onto the given base.
-// If rerere resolves all conflicts automatically, the rebase continues
-// without user intervention.
-func Rebase(base string) error {
-	err := runSilent("rebase", base)
-	if err == nil {
-		return nil
-	}
-	return tryAutoResolveRebase(err)
-}
-
-// EnableRerere enables git rerere (reuse recorded resolution) and
-// rerere.autoupdate (auto-stage resolved files) for the repository.
-func EnableRerere() error {
-	if err := runSilent("config", "rerere.enabled", "true"); err != nil {
-		return err
-	}
-	return runSilent("config", "rerere.autoupdate", "true")
-}
-
-// RebaseOnto rebases a branch using the three-argument form:
-//
-//	git rebase --onto <newBase> <oldBase> <branch>
-//
-// This replays commits after oldBase from branch onto newBase. It is used
-// when a prior branch was squash-merged and the normal rebase cannot detect
-// which commits have already been applied.
-// If rerere resolves all conflicts automatically, the rebase continues
-// without user intervention.
-func RebaseOnto(newBase, oldBase, branch string) error {
-	err := runSilent("rebase", "--onto", newBase, oldBase, branch)
-	if err == nil {
-		return nil
-	}
-	return tryAutoResolveRebase(err)
-}
-
-// RebaseContinue continues an in-progress rebase.
-// It sets GIT_EDITOR=true to prevent git from opening an interactive editor
-// for the commit message, which would cause the command to hang.
-// If rerere resolves subsequent conflicts automatically, the rebase continues
-// without user intervention.
-func RebaseContinue() error {
-	err := rebaseContinueOnce()
-	if err == nil {
-		return nil
-	}
-	return tryAutoResolveRebase(err)
-}
-
 // rebaseContinueOnce runs a single git rebase --continue without auto-resolve.
 func rebaseContinueOnce() error {
 	cmd := exec.Command("git", "rebase", "--continue")
@@ -190,36 +75,96 @@ func tryAutoResolveRebase(originalErr error) error {
 	return originalErr
 }
 
+// --- Public functions delegate through the ops interface ---
+
+// GitDir returns the path to the .git directory.
+func GitDir() (string, error) {
+	return ops.GitDir()
+}
+
+// CurrentBranch returns the name of the current branch.
+func CurrentBranch() (string, error) {
+	return ops.CurrentBranch()
+}
+
+// BranchExists returns whether a local branch with the given name exists.
+func BranchExists(name string) bool {
+	return ops.BranchExists(name)
+}
+
+// CheckoutBranch switches to the specified branch.
+func CheckoutBranch(name string) error {
+	return ops.CheckoutBranch(name)
+}
+
+// Fetch fetches from the given remote.
+func Fetch(remote string) error {
+	return ops.Fetch(remote)
+}
+
+// DefaultBranch returns the HEAD branch from origin.
+func DefaultBranch() (string, error) {
+	return ops.DefaultBranch()
+}
+
+// CreateBranch creates a new branch from the given base.
+func CreateBranch(name, base string) error {
+	return ops.CreateBranch(name, base)
+}
+
+// Push pushes branches to a remote with optional force and atomic flags.
+func Push(remote string, branches []string, force, atomic bool) error {
+	return ops.Push(remote, branches, force, atomic)
+}
+
+// Rebase rebases the current branch onto the given base.
+// If rerere resolves all conflicts automatically, the rebase continues
+// without user intervention.
+func Rebase(base string) error {
+	return ops.Rebase(base)
+}
+
+// EnableRerere enables git rerere (reuse recorded resolution) and
+// rerere.autoupdate (auto-stage resolved files) for the repository.
+func EnableRerere() error {
+	return ops.EnableRerere()
+}
+
+// RebaseOnto rebases a branch using the three-argument form:
+//
+//	git rebase --onto <newBase> <oldBase> <branch>
+//
+// This replays commits after oldBase from branch onto newBase. It is used
+// when a prior branch was squash-merged and the normal rebase cannot detect
+// which commits have already been applied.
+// If rerere resolves all conflicts automatically, the rebase continues
+// without user intervention.
+func RebaseOnto(newBase, oldBase, branch string) error {
+	return ops.RebaseOnto(newBase, oldBase, branch)
+}
+
+// RebaseContinue continues an in-progress rebase.
+// It sets GIT_EDITOR=true to prevent git from opening an interactive editor
+// for the commit message, which would cause the command to hang.
+// If rerere resolves subsequent conflicts automatically, the rebase continues
+// without user intervention.
+func RebaseContinue() error {
+	return ops.RebaseContinue()
+}
+
 // RebaseAbort aborts an in-progress rebase.
 func RebaseAbort() error {
-	return runSilent("rebase", "--abort")
+	return ops.RebaseAbort()
 }
 
 // IsRebaseInProgress checks whether a rebase is currently in progress.
 func IsRebaseInProgress() bool {
-	gitDir, err := GitDir()
-	if err != nil {
-		return false
-	}
-	for _, dir := range []string{"rebase-merge", "rebase-apply"} {
-		rebasePath := filepath.Join(gitDir, dir)
-		if info, err := os.Stat(rebasePath); err == nil && info.IsDir() {
-			return true
-		}
-	}
-	return false
+	return ops.IsRebaseInProgress()
 }
 
 // ConflictedFiles returns the list of files that have merge conflicts.
 func ConflictedFiles() ([]string, error) {
-	output, err := run("diff", "--name-only", "--diff-filter=U")
-	if err != nil {
-		return nil, err
-	}
-	if output == "" {
-		return nil, nil
-	}
-	return strings.Split(output, "\n"), nil
+	return ops.ConflictedFiles()
 }
 
 // ConflictMarkerInfo holds the location of conflict markers in a file.
@@ -236,148 +181,39 @@ type ConflictSection struct {
 
 // FindConflictMarkers scans a file for conflict markers and returns their locations.
 func FindConflictMarkers(filePath string) (*ConflictMarkerInfo, error) {
-	output, err := run("diff", "--check", "--", filePath)
-	// git diff --check exits non-zero when conflicts exist, so we parse even on error
-	if output == "" && err != nil {
-		return nil, err
-	}
-
-	info := &ConflictMarkerInfo{File: filePath}
-	var currentSection *ConflictSection
-
-	for _, line := range strings.Split(output, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		// Format: "filename:lineno: leftover conflict marker"
-		parts := strings.SplitN(line, ":", 3)
-		if len(parts) < 3 {
-			continue
-		}
-		lineNo, parseErr := strconv.Atoi(strings.TrimSpace(parts[1]))
-		if parseErr != nil {
-			continue
-		}
-		marker := strings.TrimSpace(parts[2])
-		if strings.Contains(marker, "leftover conflict marker") {
-			if currentSection == nil || currentSection.EndLine != 0 {
-				currentSection = &ConflictSection{StartLine: lineNo}
-				info.Sections = append(info.Sections, *currentSection)
-			}
-			// Update the end line of the last section
-			info.Sections[len(info.Sections)-1].EndLine = lineNo
-		}
-	}
-
-	return info, nil
+	return ops.FindConflictMarkers(filePath)
 }
 
 // IsAncestor returns whether ancestor is an ancestor of descendant.
 // This is useful to check if a fast-forward merge is possible.
 func IsAncestor(ancestor, descendant string) (bool, error) {
-	err := runSilent("merge-base", "--is-ancestor", ancestor, descendant)
-	if err == nil {
-		return true, nil
-	}
-	// Exit code 1 means "not an ancestor", which is not an error condition.
-	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
-		return false, nil
-	}
-	return false, err
+	return ops.IsAncestor(ancestor, descendant)
 }
 
 // HeadSHA returns the full SHA of the given ref.
 func HeadSHA(ref string) (string, error) {
-	return run("rev-parse", ref)
+	return ops.HeadSHA(ref)
 }
 
 // MergeBase returns the best common ancestor commit between two refs.
 func MergeBase(a, b string) (string, error) {
-	return run("merge-base", a, b)
+	return ops.MergeBase(a, b)
 }
 
 // Log returns recent commits for the given branch.
 func Log(ref string, maxCount int) ([]CommitInfo, error) {
-	format := "%H\t%s\t%at"
-	output, err := run("log", ref, "--format="+format, "-n", strconv.Itoa(maxCount))
-	if err != nil {
-		return nil, err
-	}
-	if output == "" {
-		return nil, nil
-	}
-
-	var commits []CommitInfo
-	for _, line := range strings.Split(output, "\n") {
-		parts := strings.SplitN(line, "\t", 3)
-		if len(parts) < 3 {
-			continue
-		}
-		ts, _ := strconv.ParseInt(parts[2], 10, 64)
-		commits = append(commits, CommitInfo{
-			SHA:     parts[0],
-			Subject: parts[1],
-			Time:    time.Unix(ts, 0),
-		})
-	}
-	return commits, nil
+	return ops.Log(ref, maxCount)
 }
 
 // LogRange returns commits in the range base..head (commits reachable from head
 // but not from base). This is useful for seeing all commits unique to a branch.
 func LogRange(base, head string) ([]CommitInfo, error) {
-	format := "%H\t%s\t%at"
-	rangeSpec := base + ".." + head
-	output, err := run("log", rangeSpec, "--format="+format)
-	if err != nil {
-		return nil, err
-	}
-	if output == "" {
-		return nil, nil
-	}
-
-	var commits []CommitInfo
-	for _, line := range strings.Split(output, "\n") {
-		parts := strings.SplitN(line, "\t", 3)
-		if len(parts) < 3 {
-			continue
-		}
-		ts, _ := strconv.ParseInt(parts[2], 10, 64)
-		commits = append(commits, CommitInfo{
-			SHA:     parts[0],
-			Subject: parts[1],
-			Time:    time.Unix(ts, 0),
-		})
-	}
-	return commits, nil
+	return ops.LogRange(base, head)
 }
 
 // DiffStatRange returns the total additions and deletions between two refs.
 func DiffStatRange(base, head string) (additions, deletions int, err error) {
-	output, err := run("diff", "--numstat", base+".."+head)
-	if err != nil {
-		return 0, 0, err
-	}
-	if output == "" {
-		return 0, 0, nil
-	}
-	for _, line := range strings.Split(output, "\n") {
-		parts := strings.Fields(line)
-		if len(parts) < 2 {
-			continue
-		}
-		// Binary files show "-" instead of numbers
-		if parts[0] == "-" {
-			continue
-		}
-		a, _ := strconv.Atoi(parts[0])
-		d, _ := strconv.Atoi(parts[1])
-		additions += a
-		deletions += d
-	}
-	return additions, deletions, nil
+	return ops.DiffStatRange(base, head)
 }
 
 // FileDiffStat holds per-file diff statistics.
@@ -389,91 +225,60 @@ type FileDiffStat struct {
 
 // DiffStatFiles returns per-file additions and deletions between two refs.
 func DiffStatFiles(base, head string) ([]FileDiffStat, error) {
-	output, err := run("diff", "--numstat", base+".."+head)
-	if err != nil {
-		return nil, err
-	}
-	if output == "" {
-		return nil, nil
-	}
-	var files []FileDiffStat
-	for _, line := range strings.Split(output, "\n") {
-		parts := strings.Fields(line)
-		if len(parts) < 3 {
-			continue
-		}
-		a, _ := strconv.Atoi(parts[0])
-		d, _ := strconv.Atoi(parts[1])
-		files = append(files, FileDiffStat{
-			Path:      parts[2],
-			Additions: a,
-			Deletions: d,
-		})
-	}
-	return files, nil
+	return ops.DiffStatFiles(base, head)
 }
 
 // DeleteBranch deletes a local branch.
 func DeleteBranch(name string, force bool) error {
-	flag := "-d"
-	if force {
-		flag = "-D"
-	}
-	return runSilent("branch", flag, name)
+	return ops.DeleteBranch(name, force)
 }
 
 // DeleteRemoteBranch deletes a branch on the remote.
 func DeleteRemoteBranch(remote, branch string) error {
-	return runSilent("push", remote, "--delete", branch)
+	return ops.DeleteRemoteBranch(remote, branch)
 }
 
 // ResetHard resets the current branch to the given ref.
 func ResetHard(ref string) error {
-	return runSilent("reset", "--hard", ref)
+	return ops.ResetHard(ref)
 }
 
 // SetUpstreamTracking sets the upstream tracking branch.
 func SetUpstreamTracking(branch, remote string) error {
-	return runSilent("branch", "--set-upstream-to="+remote+"/"+branch, branch)
+	return ops.SetUpstreamTracking(branch, remote)
 }
 
 // MergeFF fast-forwards the currently checked-out branch using a merge.
 func MergeFF(target string) error {
-	return runSilent("merge", "--ff-only", target)
+	return ops.MergeFF(target)
 }
 
 // UpdateBranchRef moves a branch pointer to a new commit (for branches not currently checked out).
 func UpdateBranchRef(branch, sha string) error {
-	return runSilent("branch", "-f", branch, sha)
+	return ops.UpdateBranchRef(branch, sha)
 }
 
 // StageAll stages all changes including untracked files (git add -A).
 func StageAll() error {
-	return runSilent("add", "-A")
+	return ops.StageAll()
 }
 
 // StageTracked stages changes to tracked files only (git add -u).
 func StageTracked() error {
-	return runSilent("add", "-u")
+	return ops.StageTracked()
 }
 
 // HasStagedChanges returns true if there are staged changes ready to commit.
 func HasStagedChanges() bool {
-	err := runSilent("diff", "--cached", "--quiet")
-	// Exit code 1 means there are differences (staged changes exist).
-	return err != nil
+	return ops.HasStagedChanges()
 }
 
 // Commit creates a commit with the given message and returns the new HEAD SHA.
 func Commit(message string) (string, error) {
-	if err := runSilent("commit", "-m", message); err != nil {
-		return "", err
-	}
-	return run("rev-parse", "HEAD")
+	return ops.Commit(message)
 }
 
 // ValidateRefName checks whether name is a valid git branch name.
 func ValidateRefName(name string) error {
-	_, err := run("check-ref-format", "--branch", name)
-	return err
+	return ops.ValidateRefName(name)
 }
