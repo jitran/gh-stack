@@ -57,6 +57,12 @@ func runAdd(cfg *config.Config, args []string) error {
 		return nil
 	}
 
+	if s.IsFullyMerged() {
+		cfg.Warningf("All branches in this stack have been merged")
+		cfg.Printf("Consider creating a new stack with %s", cfg.ColorCyan("gh stack init"))
+		return nil
+	}
+
 	idx := s.IndexOf(currentBranch)
 	if idx >= 0 && idx < len(s.Branches)-1 {
 		cfg.Errorf("can only add branches on top of the stack; checkout the top branch %q first", s.Branches[len(s.Branches)-1].Branch)
