@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/github/gh-stack/internal/config"
 	"github.com/github/gh-stack/internal/git"
 	"github.com/github/gh-stack/internal/stack"
@@ -175,14 +177,11 @@ func runSync(cfg *config.Config, _ *syncOptions) error {
 					if git.IsRebaseInProgress() {
 						_ = git.RebaseAbort()
 					}
-					for branch, sha := range originalRefs {
-						_ = git.CheckoutBranch(branch)
-						_ = git.ResetHard(sha)
-					}
+					restoreErrors := restoreBranches(originalRefs)
 					_ = git.CheckoutBranch(currentBranch)
 
 					cfg.Errorf("Conflict detected rebasing %s onto %s", br.Branch, newBase)
-					cfg.Printf("  All branches restored to their original state.")
+					reportRestoreStatus(cfg, restoreErrors)
 					cfg.Printf("  Run %s to resolve conflicts interactively.",
 						cfg.ColorCyan("gh stack rebase"))
 					conflicted = true
@@ -210,14 +209,11 @@ func runSync(cfg *config.Config, _ *syncOptions) error {
 					if git.IsRebaseInProgress() {
 						_ = git.RebaseAbort()
 					}
-					for branch, sha := range originalRefs {
-						_ = git.CheckoutBranch(branch)
-						_ = git.ResetHard(sha)
-					}
+					restoreErrors := restoreBranches(originalRefs)
 					_ = git.CheckoutBranch(currentBranch)
 
 					cfg.Errorf("Conflict detected rebasing %s onto %s", br.Branch, base)
-					cfg.Printf("  All branches restored to their original state.")
+					reportRestoreStatus(cfg, restoreErrors)
 					cfg.Printf("  Run %s to resolve conflicts interactively.",
 						cfg.ColorCyan("gh stack rebase"))
 					conflicted = true
@@ -316,6 +312,33 @@ func ffMerge(branch string) error {
 // updateBranchRef updates a branch ref to point to a new SHA (for branches not checked out).
 func updateBranchRef(branch, sha string) error {
 	return git.UpdateBranchRef(branch, sha)
+}
+
+// restoreBranches resets each branch to its original SHA, collecting any errors.
+func restoreBranches(originalRefs map[string]string) []string {
+	var errors []string
+	for branch, sha := range originalRefs {
+		if err := git.CheckoutBranch(branch); err != nil {
+			errors = append(errors, fmt.Sprintf("checkout %s: %s", branch, err))
+			continue
+		}
+		if err := git.ResetHard(sha); err != nil {
+			errors = append(errors, fmt.Sprintf("reset %s: %s", branch, err))
+		}
+	}
+	return errors
+}
+
+// reportRestoreStatus prints whether branch restoration succeeded or partially failed.
+func reportRestoreStatus(cfg *config.Config, restoreErrors []string) {
+	if len(restoreErrors) > 0 {
+		cfg.Warningf("Some branches could not be fully restored:")
+		for _, e := range restoreErrors {
+			cfg.Printf("  %s", e)
+		}
+	} else {
+		cfg.Printf("  All branches restored to their original state.")
+	}
 }
 
 // short returns the first 7 characters of a SHA.
