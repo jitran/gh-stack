@@ -37,6 +37,6 @@ func runFeedback(cfg *config.Config, args []string) error {
 		return err
 	}
 
-	cfg.Successf("Opening feedback form in your browser...\n")
+	cfg.Successf("Opening feedback form in your browser...")
 	return nil
 }

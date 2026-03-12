@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/cli/go-gh/v2/pkg/prompter"
 	"github.com/github/gh-stack/internal/config"
@@ -30,14 +29,14 @@ func resolveStack(sf *stack.StackFile, branch string, cfg *config.Config) (*stac
 		return nil, fmt.Errorf("branch %q belongs to multiple stacks; use an interactive terminal to select one", branch)
 	}
 
-	cfg.Warningf("Branch %q is the trunk of multiple stacks\n", branch)
+	cfg.Warningf("Branch %q is the trunk of multiple stacks", branch)
 
 	options := make([]string, len(stacks))
 	for i, s := range stacks {
 		options[i] = s.DisplayName()
 	}
 
-	p := prompter.New(os.Stdin, os.Stdout, os.Stderr)
+	p := prompter.New(cfg.In, cfg.Out, cfg.Err)
 	selected, err := p.Select("Which stack would you like to use?", "", options)
 	if err != nil {
 		return nil, fmt.Errorf("stack selection: %w", err)
@@ -52,7 +51,7 @@ func resolveStack(sf *stack.StackFile, branch string, cfg *config.Config) (*stac
 		if err := git.CheckoutBranch(topBranch); err != nil {
 			return nil, fmt.Errorf("failed to checkout branch %s: %w", topBranch, err)
 		}
-		cfg.Successf("Switched to %s\n", topBranch)
+		cfg.Successf("Switched to %s", topBranch)
 	}
 
 	return s, nil

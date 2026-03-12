@@ -38,6 +38,6 @@ func CheckoutCmd(cfg *config.Config) *cobra.Command {
 //  4. Save the stack to local tracking (.git/gh-stack, similar to gh stack init --adopt)
 //  5. Switch to the target branch (unless --no-switch is set)
 func runCheckout(cfg *config.Config, opts *checkoutOptions) error {
-	cfg.Warningf("gh stack checkout is not yet implemented\n")
+	cfg.Warningf("gh stack checkout is not yet implemented")
 	return nil
 }

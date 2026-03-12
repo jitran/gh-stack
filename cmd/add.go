@@ -106,6 +106,6 @@ func runAdd(cfg *config.Config, args []string) error {
 		return nil
 	}
 
-	cfg.Successf("Created and checked out branch %q\n", branchName)
+	cfg.Successf("Created and checked out branch %q", branchName)
 	return nil
 }

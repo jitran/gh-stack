@@ -118,7 +118,7 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 	if err := git.Fetch("origin"); err != nil {
 		cfg.Warningf("Failed to fetch origin: %v", err)
 	} else {
-		cfg.Successf("Fetching origin")
+		cfg.Successf("Fetched origin")
 	}
 
 	chainParts := []string{s.Trunk.Branch}

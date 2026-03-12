@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/github/gh-stack/internal/config"
@@ -56,6 +57,7 @@ func RootCmd() *cobra.Command {
 func Execute() {
 	cmd := RootCmd()
 	if err := cmd.Execute(); err != nil {
+		fmt.Fprintln(cmd.ErrOrStderr(), err)
 		os.Exit(1)
 	}
 }
