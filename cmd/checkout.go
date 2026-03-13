@@ -76,11 +76,7 @@ func runCheckout(cfg *config.Config, opts *checkoutOptions) error {
 			return nil
 		}
 		// Check out the top active branch of the selected stack
-		if idx := s.FirstActiveBranchIndex(); idx >= 0 {
-			targetBranch = s.Branches[len(s.Branches)-1].Branch
-		} else {
-			targetBranch = s.Branches[len(s.Branches)-1].Branch
-		}
+		targetBranch = s.Branches[len(s.Branches)-1].Branch
 	} else {
 		// Resolve target against local stacks
 		s, targetBranch, err = findStackByTarget(sf, opts.target)
