@@ -186,7 +186,7 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 		if br.IsMerged() {
 			ontoOldBase = originalRefs[br.Branch]
 			needsOnto = true
-			cfg.Successf("Skipping %s (PR #%d merged)", br.Branch, br.PullRequest.Number)
+			cfg.Successf("Skipping %s (PR %s merged)", br.Branch, cfg.PRLink(br.PullRequest.Number, br.PullRequest.URL))
 			continue
 		}
 
@@ -391,7 +391,7 @@ func continueRebase(cfg *config.Config, gitDir string) error {
 		if br.IsMerged() {
 			state.OntoOldBase = state.OriginalRefs[branchName]
 			state.UseOnto = true
-			cfg.Successf("Skipping %s (PR #%d merged)", branchName, br.PullRequest.Number)
+			cfg.Successf("Skipping %s (PR %s merged)", branchName, cfg.PRLink(br.PullRequest.Number, br.PullRequest.URL))
 			continue
 		}
 

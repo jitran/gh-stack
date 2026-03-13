@@ -146,13 +146,11 @@ func shortPRSuffix(cfg *config.Config, b stack.BranchRef, owner, repo string) st
 	if b.PullRequest == nil || b.PullRequest.Number == 0 {
 		return ""
 	}
-	prNum := fmt.Sprintf("#%d", b.PullRequest.Number)
-	if owner != "" && repo != "" {
-		url := fmt.Sprintf("https://github.com/%s/%s/pull/%d", owner, repo, b.PullRequest.Number)
-		prNum = fmt.Sprintf("\033]8;;%s\033\\%s\033]8;;\033\\", url, prNum)
+	url := b.PullRequest.URL
+	if url == "" && owner != "" && repo != "" {
+		url = fmt.Sprintf("https://github.com/%s/%s/pull/%d", owner, repo, b.PullRequest.Number)
 	}
-	// Underline to hint that the PR number is a clickable link
-	prNum = fmt.Sprintf("\033[4m%s\033[24m", prNum)
+	prNum := cfg.PRLink(b.PullRequest.Number, url)
 	colorFn := cfg.ColorSuccess // green for open
 	if b.PullRequest.Merged {
 		colorFn = cfg.ColorMagenta // purple for merged

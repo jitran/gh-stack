@@ -127,7 +127,7 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 				cfg.Warningf("failed to create PR for %s: %v", b.Branch, createErr)
 				continue
 			}
-			cfg.Successf("Created PR #%d for %s", newPR.Number, b.Branch)
+			cfg.Successf("Created PR %s for %s", cfg.PRLink(newPR.Number, newPR.URL), b.Branch)
 			s.Branches[i].PullRequest = &stack.PullRequestRef{
 				Number: newPR.Number,
 				ID:     newPR.ID,
@@ -137,12 +137,12 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 			// Update base if needed
 			if pr.BaseRefName != baseBranch {
 				if err := client.UpdatePRBase(pr.ID, baseBranch); err != nil {
-					cfg.Warningf("failed to update PR #%d base: %v", pr.Number, err)
+					cfg.Warningf("failed to update PR %s base: %v", cfg.PRLink(pr.Number, pr.URL), err)
 				} else {
-					cfg.Successf("Updated PR #%d base to %s", pr.Number, baseBranch)
+					cfg.Successf("Updated PR %s base to %s", cfg.PRLink(pr.Number, pr.URL), baseBranch)
 				}
 			} else {
-				cfg.Printf("PR #%d for %s is up to date", pr.Number, b.Branch)
+				cfg.Printf("PR %s for %s is up to date", cfg.PRLink(pr.Number, pr.URL), b.Branch)
 			}
 			if s.Branches[i].PullRequest == nil {
 				s.Branches[i].PullRequest = &stack.PullRequestRef{

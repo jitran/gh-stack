@@ -86,6 +86,21 @@ func (c *Config) Outf(format string, args ...any) {
 	fmt.Fprintf(c.Out, format, args...)
 }
 
+// PRLink formats a PR number as a clickable, underlined terminal hyperlink.
+// Falls back to plain "#N" when color is disabled.
+func (c *Config) PRLink(number int, url string) string {
+	label := fmt.Sprintf("#%d", number)
+	if c.Terminal.IsColorEnabled() {
+		if url != "" {
+			// OSC 8 hyperlink
+			label = fmt.Sprintf("\033]8;;%s\033\\%s\033]8;;\033\\", url, label)
+		}
+		// Underline
+		label = fmt.Sprintf("\033[4m%s\033[24m", label)
+	}
+	return label
+}
+
 func (c *Config) IsInteractive() bool {
 	return c.Terminal.IsTerminalOutput()
 }

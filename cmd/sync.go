@@ -156,7 +156,7 @@ func runSync(cfg *config.Config, _ *syncOptions) error {
 			if br.IsMerged() {
 				ontoOldBase = originalRefs[br.Branch]
 				needsOnto = true
-				cfg.Successf("Skipping %s (PR #%d merged)", br.Branch, br.PullRequest.Number)
+				cfg.Successf("Skipping %s (PR %s merged)", br.Branch, cfg.PRLink(br.PullRequest.Number, br.PullRequest.URL))
 				continue
 			}
 
@@ -274,7 +274,7 @@ func runSync(cfg *config.Config, _ *syncOptions) error {
 			continue
 		}
 		if b.PullRequest != nil {
-			cfg.Successf("PR #%d (%s) — Open", b.PullRequest.Number, b.Branch)
+			cfg.Successf("PR %s (%s) — Open", cfg.PRLink(b.PullRequest.Number, b.PullRequest.URL), b.Branch)
 		} else {
 			cfg.Warningf("%s has no PR", b.Branch)
 		}
