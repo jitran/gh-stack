@@ -41,6 +41,14 @@ var (
 	// Dim text (separators, secondary labels)
 	dimStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 
+	// Header styles
+	headerBorderStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))  // gray box-drawing chars
+	headerTitleStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("15")).Bold(true) // white bold
+	headerInfoStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("14")) // cyan
+	headerInfoLabelStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))  // gray
+	headerShortcutKey    = lipgloss.NewStyle().Foreground(lipgloss.Color("15")) // white
+	headerShortcutDesc   = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))  // gray
+
 	// Expand/collapse toggle
 	expandedIcon  = "▾"
 	collapsedIcon = "▸"

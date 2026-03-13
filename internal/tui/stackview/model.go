@@ -64,14 +64,45 @@ var keys = keyMap{
 	),
 }
 
+// headerHeight is the total number of lines the header box occupies (top border + 10 art lines + bottom border).
+const headerHeight = 12
+
+// minHeightForHeader is the minimum terminal height to show the header.
+const minHeightForHeader = 25
+
+// minWidthForShortcuts is the minimum terminal width to show keyboard shortcuts in the header.
+// Below this, the header is shown without the right-side shortcuts column.
+const minWidthForShortcuts = 65
+
+// minWidthForHeader is the minimum terminal width to show the header at all.
+const minWidthForHeader = 50
+
+// artLines contains the braille ASCII art displayed in the header.
+var artLines = [10]string{
+	"⠀⠀⠀⠀⠀⠀⣀⣤⣤⣤⣤⣤⣤⣀⠀⠀⠀⠀⠀⠀",
+	"⠀⠀⠀⣠⣴⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣄⠀⠀⠀",
+	"⠀⢀⣼⣿⣿⠛⠛⠿⠿⠿⠿⠿⠿⠛⠛⣿⣿⣷⡀⠀",
+	"⠀⣾⣿⣿⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⣿⣿⣷⡀",
+	"⢸⣿⣿⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⣿⡇",
+	"⢸⣿⣿⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⣿⡇",
+	"⠘⣿⣿⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⢀⣤⣿⣿⣿⣿⠇",
+	"⠀⠹⣿⣦⡈⠻⢿⠟⠀⠀⠀⠀⢻⣿⣿⣿⣿⣿⠏⠀",
+	"⠀⠀⠈⠻⣷⣤⣀⡀⠀⠀⠀⠀⢸⣿⣿⣿⡿⠃⠀⠀",
+	"⠀⠀⠀⠀⠈⠙⠻⠇⠀⠀⠀⠀⠸⠟⠛⠁⠀⠀⠀⠀",
+}
+
+// artDisplayWidth is the visual column width of each art line.
+const artDisplayWidth = 20
+
 // Model is the Bubbletea model for the interactive stack view.
 type Model struct {
-	nodes  []BranchNode
-	trunk  stack.BranchRef
-	cursor int // index into nodes (displayed top-down, so 0 = top of stack)
-	help   help.Model
-	width  int
-	height int
+	nodes   []BranchNode
+	trunk   stack.BranchRef
+	version string
+	cursor  int // index into nodes (displayed top-down, so 0 = top of stack)
+	help    help.Model
+	width   int
+	height  int
 
 	// scrollOffset tracks vertical scroll position for tall stacks.
 	scrollOffset int
@@ -81,7 +112,7 @@ type Model struct {
 }
 
 // New creates a new stack view model.
-func New(nodes []BranchNode, trunk stack.BranchRef) Model {
+func New(nodes []BranchNode, trunk stack.BranchRef, version string) Model {
 	h := help.New()
 	h.ShowAll = true
 
@@ -95,10 +126,11 @@ func New(nodes []BranchNode, trunk stack.BranchRef) Model {
 	}
 
 	return Model{
-		nodes:  nodes,
-		trunk:  trunk,
-		cursor: cursor,
-		help:   h,
+		nodes:   nodes,
+		trunk:   trunk,
+		version: version,
+		cursor:  cursor,
+		help:    h,
 	}
 }
 
@@ -141,6 +173,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.ToggleCommits):
 			if m.cursor >= 0 && m.cursor < len(m.nodes) {
 				m.nodes[m.cursor].CommitsExpanded = !m.nodes[m.cursor].CommitsExpanded
+				m.clampScroll()
 				m.ensureVisible()
 			}
 			return m, nil
@@ -148,6 +181,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.ToggleFiles):
 			if m.cursor >= 0 && m.cursor < len(m.nodes) {
 				m.nodes[m.cursor].FilesExpanded = !m.nodes[m.cursor].FilesExpanded
+				m.clampScroll()
 				m.ensureVisible()
 			}
 			return m, nil
@@ -186,6 +220,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			if msg.Button == tea.MouseButtonWheelDown {
 				m.scrollOffset++
+				m.clampScroll()
 				return m, nil
 			}
 		}
@@ -202,8 +237,17 @@ func openBrowserInBackground(url string) {
 
 // handleMouseClick processes a mouse click at the given screen position.
 func (m Model) handleMouseClick(screenX, screenY int) (tea.Model, tea.Cmd) {
-	// Map screen Y to content line, accounting for scroll offset
-	contentLine := screenY + m.scrollOffset
+	// If header is visible, clicks in the header area are ignored
+	yOffset := 0
+	if m.showHeader() {
+		if screenY < headerHeight {
+			return m, nil
+		}
+		yOffset = headerHeight
+	}
+
+	// Map screen Y to content line, accounting for scroll offset and header
+	contentLine := (screenY - yOffset) + m.scrollOffset
 
 	// Walk through rendered lines to find which node was clicked.
 	// Account for the merged separator line that may appear between nodes.
@@ -235,6 +279,7 @@ func (m Model) handleMouseClick(screenX, screenY int) (tea.Model, tea.Cmd) {
 				filesToggleLine := nodeStart + m.filesToggleLineOffset(i)
 				if contentLine == filesToggleLine {
 					m.nodes[i].FilesExpanded = !m.nodes[i].FilesExpanded
+					m.clampScroll()
 				}
 			}
 
@@ -243,6 +288,7 @@ func (m Model) handleMouseClick(screenX, screenY int) (tea.Model, tea.Cmd) {
 				commitToggleLine := nodeStart + m.commitToggleLineOffset(i)
 				if contentLine == commitToggleLine {
 					m.nodes[i].CommitsExpanded = !m.nodes[i].CommitsExpanded
+					m.clampScroll()
 				}
 			}
 
@@ -349,8 +395,8 @@ func (m *Model) ensureVisible() {
 	}
 	endLine := startLine + m.nodeLineCount(m.cursor)
 
-	// Available content height (reserve 2 for help bar)
-	viewHeight := m.height - 2
+	// Available content height (reserve space for header or help bar)
+	viewHeight := m.contentViewHeight()
 	if viewHeight < 1 {
 		viewHeight = 1
 	}
@@ -363,9 +409,69 @@ func (m *Model) ensureVisible() {
 	}
 }
 
+// showHeader returns true if the terminal is large enough for the header.
+func (m Model) showHeader() bool {
+	return m.height >= minHeightForHeader && m.width >= minWidthForHeader
+}
+
+// showShortcuts returns true if the terminal is wide enough for the shortcuts column in the header.
+func (m Model) showShortcuts() bool {
+	return m.width >= minWidthForShortcuts
+}
+
+// totalContentLines returns the total number of rendered content lines (excluding header).
+func (m Model) totalContentLines() int {
+	lines := 0
+	prevWasMerged := false
+	for i := 0; i < len(m.nodes); i++ {
+		isMerged := m.nodes[i].Ref.IsMerged()
+		if isMerged && !prevWasMerged && i > 0 {
+			lines++ // separator line
+		}
+		prevWasMerged = isMerged
+		lines += m.nodeLineCount(i)
+	}
+	lines++ // trunk line
+	return lines
+}
+
+// contentViewHeight returns the number of lines available for stack content.
+func (m Model) contentViewHeight() int {
+	reserved := 0
+	if m.showHeader() {
+		reserved = headerHeight
+	}
+	h := m.height - reserved
+	if h < 1 {
+		h = 1
+	}
+	return h
+}
+
+// clampScroll ensures scrollOffset doesn't exceed content bounds.
+func (m *Model) clampScroll() {
+	maxScroll := m.totalContentLines() - m.contentViewHeight()
+	if maxScroll < 0 {
+		maxScroll = 0
+	}
+	if m.scrollOffset > maxScroll {
+		m.scrollOffset = maxScroll
+	}
+	if m.scrollOffset < 0 {
+		m.scrollOffset = 0
+	}
+}
+
 func (m Model) View() string {
 	if m.width == 0 {
 		return ""
+	}
+
+	var out strings.Builder
+
+	showHeader := m.showHeader()
+	if showHeader {
+		m.renderHeader(&out)
 	}
 
 	var b strings.Builder
@@ -390,14 +496,23 @@ func (m Model) View() string {
 	contentLines := strings.Split(content, "\n")
 
 	// Apply scrolling
-	viewHeight := m.height - 2 // reserve for help bar
+	reservedLines := 0
+	if showHeader {
+		reservedLines = headerHeight
+	}
+	viewHeight := m.height - reservedLines
 	if viewHeight < 1 {
 		viewHeight = 1
 	}
 
+	// Clamp scroll offset so we can't scroll past content
+	maxScroll := len(contentLines) - viewHeight
+	if maxScroll < 0 {
+		maxScroll = 0
+	}
 	start := m.scrollOffset
-	if start > len(contentLines) {
-		start = len(contentLines)
+	if start > maxScroll {
+		start = maxScroll
 	}
 	end := start + viewHeight
 	if end > len(contentLines) {
@@ -405,11 +520,158 @@ func (m Model) View() string {
 	}
 
 	visibleContent := strings.Join(contentLines[start:end], "\n")
+	out.WriteString(visibleContent)
 
-	// Add help bar at the bottom
-	helpView := m.help.View(keys)
+	return out.String()
+}
 
-	return visibleContent + "\n" + helpView
+// renderHeader renders the full-width stylized header box with ASCII art, stack info, and keyboard shortcuts.
+func (m Model) renderHeader(b *strings.Builder) {
+	w := m.width
+	if w < 2 {
+		return
+	}
+	innerWidth := w - 2 // subtract left and right border chars
+
+	// Build info lines (placed to the right of art on specific rows)
+	mergedCount := 0
+	for _, n := range m.nodes {
+		if n.Ref.IsMerged() {
+			mergedCount++
+		}
+	}
+	branchCount := len(m.nodes)
+	branchInfo := fmt.Sprintf("%d branches", branchCount)
+	if branchCount == 1 {
+		branchInfo = "1 branch"
+	}
+	if mergedCount > 0 {
+		branchInfo += fmt.Sprintf(" (%d merged)", mergedCount)
+	}
+
+	// Branch progress icon: ○ none merged, ◐ some merged, ● all merged
+	branchIcon := "○"
+	if mergedCount > 0 && mergedCount < branchCount {
+		branchIcon = "◐"
+	} else if branchCount > 0 && mergedCount == branchCount {
+		branchIcon = "●"
+	}
+
+	// Info text mapped to art row indices (0-based)
+	infoByRow := map[int]string{
+		2: headerTitleStyle.Render("GitHub Stacks"),
+		3: headerInfoLabelStyle.Render("v" + m.version),
+		5: headerInfoStyle.Render("✓") + headerInfoLabelStyle.Render(" Stack initialized"),
+		6: headerInfoStyle.Render("◆") + headerInfoLabelStyle.Render(" Base: "+m.trunk.Branch),
+		7: headerInfoStyle.Render(branchIcon) + headerInfoLabelStyle.Render(" "+branchInfo),
+	}
+
+	showShortcuts := m.showShortcuts()
+
+	// Build shortcut lines (rendered content + visual widths)
+	type shortcutLine struct {
+		text     string
+		visWidth int
+	}
+	var shortcuts []shortcutLine
+	maxShortcutWidth := 0
+	rightColWidth := 0
+
+	if showShortcuts {
+		shortcuts = []shortcutLine{
+			{headerShortcutKey.Render("↑") + headerShortcutDesc.Render(" up  ") +
+				headerShortcutKey.Render("↓") + headerShortcutDesc.Render(" down"), 0},
+			{headerShortcutKey.Render("c") + headerShortcutDesc.Render(" commits"), 0},
+			{headerShortcutKey.Render("f") + headerShortcutDesc.Render(" files"), 0},
+			{headerShortcutKey.Render("o") + headerShortcutDesc.Render(" open PR"), 0},
+			{headerShortcutKey.Render("↵") + headerShortcutDesc.Render(" checkout"), 0},
+			{headerShortcutKey.Render("q") + headerShortcutDesc.Render(" quit"), 0},
+		}
+		for i := range shortcuts {
+			shortcuts[i].visWidth = lipgloss.Width(shortcuts[i].text)
+			if shortcuts[i].visWidth > maxShortcutWidth {
+				maxShortcutWidth = shortcuts[i].visWidth
+			}
+		}
+		rightColWidth = maxShortcutWidth + 2
+	}
+
+	// Left content base: 1 (margin) + artDisplayWidth
+	leftContentBase := 1 + artDisplayWidth
+
+	// Vertically center shortcuts within the 10 content rows
+	scStartRow := 0
+	if len(shortcuts) > 0 {
+		scStartRow = (10 - len(shortcuts)) / 2
+	}
+
+	// Top border
+	b.WriteString(headerBorderStyle.Render("┌" + strings.Repeat("─", innerWidth) + "┐"))
+	b.WriteString("\n")
+
+	// Content rows
+	gap := "  " // gap between art and info text
+	for i := 0; i < 10; i++ {
+		art := artLines[i]
+
+		// Build info segment
+		infoText := ""
+		infoVisualLen := 0
+		if info, ok := infoByRow[i]; ok {
+			infoText = gap + info
+			infoVisualLen = 2 + lipgloss.Width(info)
+		}
+
+		leftUsed := leftContentBase + infoVisualLen
+
+		if showShortcuts {
+			// Two-column layout: left (art+info) | right (shortcuts)
+			shortcutCol := innerWidth - rightColWidth
+			midPad := shortcutCol - leftUsed
+			if midPad < 0 {
+				midPad = 0
+			}
+
+			scIdx := i - scStartRow
+			shortcutRendered := ""
+			scVisWidth := 0
+			if scIdx >= 0 && scIdx < len(shortcuts) {
+				shortcutRendered = shortcuts[scIdx].text
+				scVisWidth = shortcuts[scIdx].visWidth
+			}
+			scTrailingPad := rightColWidth - scVisWidth
+			if scTrailingPad < 0 {
+				scTrailingPad = 0
+			}
+
+			b.WriteString(headerBorderStyle.Render("│"))
+			b.WriteString(" ")
+			b.WriteString(art)
+			b.WriteString(infoText)
+			b.WriteString(strings.Repeat(" ", midPad))
+			b.WriteString(shortcutRendered)
+			b.WriteString(strings.Repeat(" ", scTrailingPad))
+			b.WriteString(headerBorderStyle.Render("│"))
+		} else {
+			// Single-column layout: art + info, padded to fill
+			trailingPad := innerWidth - leftUsed
+			if trailingPad < 0 {
+				trailingPad = 0
+			}
+
+			b.WriteString(headerBorderStyle.Render("│"))
+			b.WriteString(" ")
+			b.WriteString(art)
+			b.WriteString(infoText)
+			b.WriteString(strings.Repeat(" ", trailingPad))
+			b.WriteString(headerBorderStyle.Render("│"))
+		}
+		b.WriteString("\n")
+	}
+
+	// Bottom border
+	b.WriteString(headerBorderStyle.Render("└" + strings.Repeat("─", innerWidth) + "┘"))
+	b.WriteString("\n")
 }
 
 // renderNode renders a single branch node.

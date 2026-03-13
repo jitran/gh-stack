@@ -15,6 +15,7 @@ func RootCmd() *cobra.Command {
 		Use:           "stack <command>",
 		Short:         "Manage stacked branches and pull requests",
 		Long:          "Create, navigate, and manage stacks of branches and pull requests.",
+		Version:       Version,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}

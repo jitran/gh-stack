@@ -176,7 +176,7 @@ func viewFullTUI(cfg *config.Config, s *stack.Stack, currentBranch string) error
 		reversed[len(nodes)-1-i] = n
 	}
 
-	model := stackview.New(reversed, s.Trunk)
+	model := stackview.New(reversed, s.Trunk, Version)
 
 	p := tea.NewProgram(
 		model,

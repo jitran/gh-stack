@@ -1,6 +1,7 @@
 package stackview
 
 import (
+	"fmt"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -44,7 +45,7 @@ func TestNew_CursorAtCurrentBranch(t *testing.T) {
 	nodes := makeNodes("b1", "b2", "b3")
 	nodes[1].IsCurrent = true
 
-	m := New(nodes, testTrunk)
+	m := New(nodes, testTrunk, "0.0.1")
 
 	assert.Equal(t, 1, m.cursor)
 }
@@ -52,14 +53,14 @@ func TestNew_CursorAtCurrentBranch(t *testing.T) {
 func TestNew_CursorAtZeroWhenNoCurrent(t *testing.T) {
 	nodes := makeNodes("b1", "b2", "b3")
 
-	m := New(nodes, testTrunk)
+	m := New(nodes, testTrunk, "0.0.1")
 
 	assert.Equal(t, 0, m.cursor)
 }
 
 func TestUpdate_KeyboardNavigation(t *testing.T) {
 	nodes := makeNodes("b1", "b2", "b3")
-	m := New(nodes, testTrunk)
+	m := New(nodes, testTrunk, "0.0.1")
 	assert.Equal(t, 0, m.cursor)
 
 	// Down
@@ -96,7 +97,7 @@ func TestUpdate_KeyboardNavigation(t *testing.T) {
 func TestUpdate_ToggleCommits(t *testing.T) {
 	nodes := makeNodes("b1", "b2")
 	nodes[0].Commits = []git.CommitInfo{{SHA: "abc", Subject: "test"}}
-	m := New(nodes, testTrunk)
+	m := New(nodes, testTrunk, "0.0.1")
 
 	assert.False(t, m.nodes[0].CommitsExpanded)
 
@@ -112,7 +113,7 @@ func TestUpdate_ToggleCommits(t *testing.T) {
 
 func TestUpdate_ToggleFiles(t *testing.T) {
 	nodes := makeNodes("b1", "b2")
-	m := New(nodes, testTrunk)
+	m := New(nodes, testTrunk, "0.0.1")
 
 	assert.False(t, m.nodes[0].FilesExpanded)
 
@@ -128,7 +129,7 @@ func TestUpdate_ToggleFiles(t *testing.T) {
 
 func TestUpdate_Quit(t *testing.T) {
 	nodes := makeNodes("b1")
-	m := New(nodes, testTrunk)
+	m := New(nodes, testTrunk, "0.0.1")
 
 	quitKeys := []string{"q", "esc", "ctrl+c"}
 	for _, k := range quitKeys {
@@ -143,7 +144,7 @@ func TestUpdate_CheckoutOnEnter(t *testing.T) {
 	nodes := makeNodes("b1", "b2")
 	nodes[0].IsCurrent = true
 	nodes[1].PR = &ghapi.PRDetails{Number: 42, URL: "https://github.com/pr/42"}
-	m := New(nodes, testTrunk)
+	m := New(nodes, testTrunk, "0.0.1")
 
 	// Move to b2 (non-current)
 	updated, _ := m.Update(keyMsg("down"))
@@ -161,7 +162,7 @@ func TestUpdate_CheckoutOnEnter(t *testing.T) {
 func TestUpdate_EnterOnCurrentDoesNothing(t *testing.T) {
 	nodes := makeNodes("b1", "b2")
 	nodes[0].IsCurrent = true
-	m := New(nodes, testTrunk)
+	m := New(nodes, testTrunk, "0.0.1")
 	assert.Equal(t, 0, m.cursor)
 
 	// Press enter on current node
@@ -172,3 +173,146 @@ func TestUpdate_EnterOnCurrentDoesNothing(t *testing.T) {
 	assert.Nil(t, cmd, "enter on current branch should not quit")
 }
 
+func TestView_HeaderShownWhenTallEnough(t *testing.T) {
+	nodes := makeNodes("b1", "b2")
+	m := New(nodes, testTrunk, "0.0.1")
+
+	// Simulate a tall and wide terminal
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 40})
+	m = updated.(Model)
+
+	view := m.View()
+	assert.Contains(t, view, "┌")
+	assert.Contains(t, view, "┘")
+	assert.Contains(t, view, "GitHub Stacks")
+	assert.Contains(t, view, "v0.0.1")
+	assert.Contains(t, view, "Base: main")
+	assert.Contains(t, view, "2 branches")
+	assert.Contains(t, view, "↑")
+	assert.Contains(t, view, "quit")
+}
+
+func TestView_HeaderHiddenWhenShort(t *testing.T) {
+	nodes := makeNodes("b1")
+	m := New(nodes, testTrunk, "0.0.1")
+
+	// Simulate a short terminal (below minHeightForHeader)
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 20})
+	m = updated.(Model)
+
+	view := m.View()
+	// Should NOT contain header box
+	assert.NotContains(t, view, "┌")
+	assert.NotContains(t, view, "GitHub Stacks")
+	// Should NOT contain help bar either (hints are only in header)
+	assert.NotContains(t, view, "commits")
+}
+
+func TestView_HeaderHiddenWhenNarrow(t *testing.T) {
+	nodes := makeNodes("b1")
+	m := New(nodes, testTrunk, "0.0.1")
+
+	// Tall but too narrow for header (below minWidthForHeader)
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 35, Height: 40})
+	m = updated.(Model)
+
+	view := m.View()
+	assert.NotContains(t, view, "┌")
+	assert.NotContains(t, view, "GitHub Stacks")
+}
+
+func TestView_HeaderWithoutShortcutsWhenMediumWidth(t *testing.T) {
+	nodes := makeNodes("b1", "b2")
+	m := New(nodes, testTrunk, "0.0.1")
+
+	// Wide enough for header but not for shortcuts (between minWidthForHeader and minWidthForShortcuts)
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 60, Height: 40})
+	m = updated.(Model)
+
+	view := m.View()
+	assert.Contains(t, view, "┌", "header should be shown")
+	assert.Contains(t, view, "GitHub Stacks", "info should be shown")
+	assert.NotContains(t, view, "checkout", "shortcuts should be hidden at this width")
+}
+
+func TestView_HeaderShowsMergedCount(t *testing.T) {
+	nodes := makeNodes("b1", "b2", "b3")
+	nodes[0].Ref.PullRequest = &stack.PullRequestRef{Merged: true}
+	m := New(nodes, testTrunk, "0.0.1")
+
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 40})
+	m = updated.(Model)
+
+	view := m.View()
+	assert.Contains(t, view, "3 branches (1 merged)")
+}
+
+func TestView_BranchProgressIcon(t *testing.T) {
+	tests := []struct {
+		name     string
+		merged   []int // indices of merged branches
+		total    int
+		wantIcon string
+	}{
+		{"none merged", nil, 3, "○"},
+		{"some merged", []int{0}, 3, "◐"},
+		{"all merged", []int{0, 1, 2}, 3, "●"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			names := make([]string, tt.total)
+			for i := range names {
+				names[i] = fmt.Sprintf("b%d", i)
+			}
+			nodes := makeNodes(names...)
+			for _, idx := range tt.merged {
+				nodes[idx].Ref.PullRequest = &stack.PullRequestRef{Merged: true}
+			}
+			m := New(nodes, testTrunk, "0.0.1")
+			updated, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 40})
+			m = updated.(Model)
+
+			view := m.View()
+			assert.Contains(t, view, tt.wantIcon)
+		})
+	}
+}
+
+func TestMouseClick_HeaderAreaIgnored(t *testing.T) {
+	nodes := makeNodes("b1", "b2")
+	m := New(nodes, testTrunk, "0.0.1")
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 40})
+	m = updated.(Model)
+
+	// Click inside the header area (row 5 is inside the 12-line header)
+	updated, _ = m.Update(tea.MouseMsg{
+		Action: tea.MouseActionPress,
+		Button: tea.MouseButtonLeft,
+		X:      10,
+		Y:      5,
+	})
+	result := updated.(Model)
+	assert.Equal(t, 0, result.cursor, "clicking in header should not change cursor")
+}
+
+func TestScrollClamp_CannotScrollPastContent(t *testing.T) {
+	nodes := makeNodes("b1", "b2")
+	m := New(nodes, testTrunk, "0.0.1")
+
+	// Tall terminal with plenty of room for content
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 40})
+	m = updated.(Model)
+
+	// Scroll down many times — should not scroll past content
+	for i := 0; i < 50; i++ {
+		updated, _ = m.Update(tea.MouseMsg{
+			Action: tea.MouseActionPress,
+			Button: tea.MouseButtonWheelDown,
+		})
+		m = updated.(Model)
+	}
+
+	// scrollOffset should be clamped (content fits in view, so offset stays 0)
+	view := m.View()
+	assert.Contains(t, view, "b1", "content should still be visible after excessive scrolling")
+}
