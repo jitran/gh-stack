@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/cli/go-gh/v2/pkg/prompter"
 	"github.com/github/gh-stack/internal/config"
 	"github.com/github/gh-stack/internal/git"
 	"github.com/github/gh-stack/internal/stack"
@@ -10,8 +12,9 @@ import (
 )
 
 type pushOptions struct {
-	draft  bool
-	dryRun bool
+	auto  bool
+	draft bool
+	noPRs bool
 }
 
 func PushCmd(cfg *config.Config) *cobra.Command {
@@ -25,8 +28,9 @@ func PushCmd(cfg *config.Config) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().BoolVar(&opts.auto, "auto", false, "Use auto-generated PR titles without prompting")
 	cmd.Flags().BoolVar(&opts.draft, "draft", false, "Create PRs as drafts")
-	cmd.Flags().BoolVar(&opts.dryRun, "dry-run", false, "Show what would be pushed without pushing")
+	cmd.Flags().BoolVar(&opts.noPRs, "no-prs", false, "Push branches without creating or updating PRs")
 
 	return cmd
 }
@@ -79,11 +83,6 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 		cfg.Printf("Skipping %d merged %s", len(merged), plural(len(merged), "branch", "branches"))
 	}
 	for _, b := range s.ActiveBranches() {
-		if opts.dryRun {
-			cfg.Printf("Would push %s", b.Branch)
-			continue
-		}
-
 		cfg.Printf("Pushing %s...", b.Branch)
 		if err := git.Push("origin", []string{b.Branch}, true, false); err != nil {
 			cfg.Errorf("failed to push %s: %s", b.Branch, err)
@@ -91,7 +90,8 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 		}
 	}
 
-	if opts.dryRun {
+	if opts.noPRs {
+		cfg.Successf("Pushed %d branches (PR creation skipped)", len(s.ActiveBranches()))
 		return nil
 	}
 
@@ -109,8 +109,17 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 		}
 
 		if pr == nil {
-			// Create new PR
-			title := b.Branch
+			// Create new PR — auto-generate title from commits/branch name,
+			// then prompt interactively unless --auto or non-interactive.
+			baseBranchForDiff := s.ActiveBaseBranch(b.Branch)
+			title := defaultPRTitle(baseBranchForDiff, b.Branch)
+			if !opts.auto && cfg.IsInteractive() {
+				p := prompter.New(cfg.In, cfg.Out, cfg.Err)
+				input, err := p.Input(fmt.Sprintf("Title for PR (branch %s):", b.Branch), title)
+				if err == nil && input != "" {
+					title = input
+				}
+			}
 			body := fmt.Sprintf("Part %d of stack.\n\nBase: `%s`", i+1, baseBranch)
 
 			newPR, createErr := client.CreatePR(baseBranch, b.Branch, title, body, opts.draft)
@@ -177,4 +186,25 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 
 	cfg.Successf("Pushed and synced %d branches", len(s.ActiveBranches()))
 	return nil
+}
+
+// defaultPRTitle generates a PR title from the branch's commits.
+// If there is exactly one commit, use its subject. Otherwise, humanize the
+// branch name (replace hyphens/underscores with spaces).
+func defaultPRTitle(base, head string) string {
+	commits, err := git.LogRange(base, head)
+	if err == nil && len(commits) == 1 {
+		return commits[0].Subject
+	}
+	return humanize(head)
+}
+
+// humanize replaces hyphens and underscores with spaces.
+func humanize(s string) string {
+	return strings.Map(func(r rune) rune {
+		if r == '-' || r == '_' {
+			return ' '
+		}
+		return r
+	}, s)
 }

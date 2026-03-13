@@ -235,17 +235,21 @@ gh stack push [flags]
 
 Pushes every branch to the remote, then for each branch either creates a new PR (with the correct base branch) or updates the base of an existing PR if it has changed. Uses `--force-with-lease` by default to safely update rebased branches.
 
+When creating new PRs, you will be prompted to enter a title for each one. Press Enter to accept the default (branch name), or use `--auto` to skip prompting entirely.
+
 | Flag | Description |
 |------|-------------|
+| `--auto` | Use auto-generated PR titles without prompting |
 | `--draft` | Create new PRs as drafts |
-| `--dry-run` | Show what would be pushed without actually pushing |
+| `--no-prs` | Push branches without creating or updating PRs |
 
 **Examples:**
 
 ```sh
 gh stack push
+gh stack push --auto
 gh stack push --draft
-gh stack push --dry-run
+gh stack push --no-prs
 ```
 
 ### `gh stack view`
