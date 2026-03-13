@@ -48,7 +48,7 @@ func LoadBranchNodes(cfg *config.Config, s *stack.Stack, currentBranch string) [
 		// For merged branches, use the merge-base (fork point) as the diff
 		// anchor since the base branch has moved past the merge point and
 		// a two-dot diff would show nothing after a squash merge.
-		isMerged := b.PullRequest != nil && b.PullRequest.Merged
+		isMerged := b.IsMerged()
 		diffBase := baseBranch
 		if isMerged {
 			if mb, err := git.MergeBase(baseBranch, b.Branch); err == nil {

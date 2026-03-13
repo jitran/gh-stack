@@ -73,7 +73,7 @@ func syncStackPRs(cfg *config.Config, s *stack.Stack) {
 	for i := range s.Branches {
 		b := &s.Branches[i]
 
-		if b.PullRequest != nil && b.PullRequest.Merged {
+		if b.IsMerged() {
 			continue
 		}
 
