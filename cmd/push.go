@@ -14,7 +14,7 @@ import (
 type pushOptions struct {
 	auto  bool
 	draft bool
-	noPRs bool
+	skipPRs bool
 }
 
 func PushCmd(cfg *config.Config) *cobra.Command {
@@ -30,7 +30,7 @@ func PushCmd(cfg *config.Config) *cobra.Command {
 
 	cmd.Flags().BoolVar(&opts.auto, "auto", false, "Use auto-generated PR titles without prompting")
 	cmd.Flags().BoolVar(&opts.draft, "draft", false, "Create PRs as drafts")
-	cmd.Flags().BoolVar(&opts.noPRs, "no-prs", false, "Push branches without creating or updating PRs")
+	cmd.Flags().BoolVar(&opts.skipPRs, "skip-prs", false, "Push branches without creating or updating PRs")
 
 	return cmd
 }
@@ -90,7 +90,7 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 		}
 	}
 
-	if opts.noPRs {
+	if opts.skipPRs {
 		cfg.Successf("Pushed %d branches (PR creation skipped)", len(s.ActiveBranches()))
 		return nil
 	}

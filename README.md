@@ -241,7 +241,7 @@ When creating new PRs, you will be prompted to enter a title for each one. Press
 |------|-------------|
 | `--auto` | Use auto-generated PR titles without prompting |
 | `--draft` | Create new PRs as drafts |
-| `--no-prs` | Push branches without creating or updating PRs |
+| `--skip-prs` | Push branches without creating or updating PRs |
 
 **Examples:**
 
@@ -249,7 +249,7 @@ When creating new PRs, you will be prompted to enter a title for each one. Press
 gh stack push
 gh stack push --auto
 gh stack push --draft
-gh stack push --no-prs
+gh stack push --skip-prs
 ```
 
 ### `gh stack view`
