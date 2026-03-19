@@ -358,12 +358,6 @@ gh stack feedback
 gh stack feedback "Support for reordering branches"
 ```
 
-### Placeholder commands
-
-The following commands are planned but not yet implemented. Running them prints a notice and suggests using `gh stack feedback` to share your interest.
-
-`remove` · `modify` · `reorder` · `move` · `fold` · `squash` · `rename` · `split`
-
 ## Typical workflow
 
 ```sh
