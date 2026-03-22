@@ -27,6 +27,9 @@ type Ops interface {
 	ResolveRemote(branch string) (string, error)
 	Rebase(base string) error
 	EnableRerere() error
+	IsRerereEnabled() (bool, error)
+	IsRerereDeclined() (bool, error)
+	SaveRerereDeclined() error
 	RebaseOnto(newBase, oldBase, branch string) error
 	RebaseContinue() error
 	RebaseAbort() error
@@ -170,6 +173,27 @@ func (d *defaultOps) EnableRerere() error {
 		return err
 	}
 	return runSilent("config", "rerere.autoupdate", "true")
+}
+
+func (d *defaultOps) IsRerereEnabled() (bool, error) {
+	out, err := run("config", "--get", "rerere.enabled")
+	if err != nil {
+		// Missing key — not enabled.
+		return false, nil
+	}
+	return strings.EqualFold(strings.TrimSpace(out), "true"), nil
+}
+
+func (d *defaultOps) IsRerereDeclined() (bool, error) {
+	out, err := run("config", "--get", "gh-stack.rerere-declined")
+	if err != nil {
+		return false, nil
+	}
+	return strings.EqualFold(strings.TrimSpace(out), "true"), nil
+}
+
+func (d *defaultOps) SaveRerereDeclined() error {
+	return runSilent("config", "gh-stack.rerere-declined", "true")
 }
 
 func (d *defaultOps) RebaseOnto(newBase, oldBase, branch string) error {

@@ -140,15 +140,16 @@ func TestInit_PrefixStoredInStack(t *testing.T) {
 	}
 }
 
-func TestInit_EnablesRerere(t *testing.T) {
+func TestInit_RerereAlreadyEnabled(t *testing.T) {
 	gitDir := t.TempDir()
-	rerereCalled := false
+	enableRerereCalled := false
 	restore := git.SetOps(&git.MockOps{
 		GitDirFn:        func() (string, error) { return gitDir, nil },
 		DefaultBranchFn: func() (string, error) { return "main", nil },
 		CurrentBranchFn: func() (string, error) { return "main", nil },
+		IsRerereEnabledFn: func() (bool, error) { return true, nil },
 		EnableRerereFn: func() error {
-			rerereCalled = true
+			enableRerereCalled = true
 			return nil
 		},
 	})
@@ -158,8 +159,8 @@ func TestInit_EnablesRerere(t *testing.T) {
 	runInit(cfg, &initOptions{branches: []string{"b1"}})
 	collectOutput(cfg, outR, errR)
 
-	if !rerereCalled {
-		t.Error("expected EnableRerere to be called")
+	if enableRerereCalled {
+		t.Error("EnableRerere should not be called when rerere is already enabled")
 	}
 }
 

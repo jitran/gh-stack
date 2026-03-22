@@ -212,3 +212,35 @@ func activeBranchNames(s *stack.Stack) []string {
 	}
 	return names
 }
+
+// ensureRerere checks whether git rerere is enabled and, if not, prompts the
+// user for permission before enabling it.  If the user previously declined,
+// the prompt is suppressed.  In non-interactive sessions the function is a
+// no-op so commands can still run in CI/scripting.
+func ensureRerere(cfg *config.Config) {
+	enabled, err := git.IsRerereEnabled()
+	if err != nil || enabled {
+		return
+	}
+
+	declined, _ := git.IsRerereDeclined()
+	if declined {
+		return
+	}
+
+	if !cfg.IsInteractive() {
+		return
+	}
+
+	p := prompter.New(cfg.In, cfg.Out, cfg.Err)
+	ok, err := p.Confirm("Enable git rerere to remember conflict resolutions?", true)
+	if err != nil {
+		return
+	}
+
+	if ok {
+		_ = git.EnableRerere()
+	} else {
+		_ = git.SaveRerereDeclined()
+	}
+}

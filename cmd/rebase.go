@@ -88,7 +88,7 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 	currentBranch := result.CurrentBranch
 
 	// Enable git rerere so conflict resolutions are remembered.
-	_ = git.EnableRerere()
+	ensureRerere(cfg)
 
 	// Resolve remote for fetch and trunk comparison
 	remote, err := pickRemote(cfg, currentBranch)

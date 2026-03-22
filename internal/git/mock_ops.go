@@ -15,6 +15,9 @@ type MockOps struct {
 	ResolveRemoteFn       func(string) (string, error)
 	RebaseFn              func(string) error
 	EnableRerereFn        func() error
+	IsRerereEnabledFn     func() (bool, error)
+	IsRerereDeclinedFn    func() (bool, error)
+	SaveRerereDeclinedFn  func() error
 	RebaseOntoFn          func(string, string, string) error
 	RebaseContinueFn      func() error
 	RebaseAbortFn         func() error
@@ -117,6 +120,27 @@ func (m *MockOps) Rebase(base string) error {
 func (m *MockOps) EnableRerere() error {
 	if m.EnableRerereFn != nil {
 		return m.EnableRerereFn()
+	}
+	return nil
+}
+
+func (m *MockOps) IsRerereEnabled() (bool, error) {
+	if m.IsRerereEnabledFn != nil {
+		return m.IsRerereEnabledFn()
+	}
+	return false, nil
+}
+
+func (m *MockOps) IsRerereDeclined() (bool, error) {
+	if m.IsRerereDeclinedFn != nil {
+		return m.IsRerereDeclinedFn()
+	}
+	return false, nil
+}
+
+func (m *MockOps) SaveRerereDeclined() error {
+	if m.SaveRerereDeclinedFn != nil {
+		return m.SaveRerereDeclinedFn()
 	}
 	return nil
 }

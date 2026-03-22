@@ -149,6 +149,21 @@ func EnableRerere() error {
 	return ops.EnableRerere()
 }
 
+// IsRerereEnabled returns whether rerere.enabled is set to "true" in git config.
+func IsRerereEnabled() (bool, error) {
+	return ops.IsRerereEnabled()
+}
+
+// IsRerereDeclined returns whether the user previously declined the rerere prompt.
+func IsRerereDeclined() (bool, error) {
+	return ops.IsRerereDeclined()
+}
+
+// SaveRerereDeclined records that the user declined the rerere prompt.
+func SaveRerereDeclined() error {
+	return ops.SaveRerereDeclined()
+}
+
 // RebaseOnto rebases a branch using the three-argument form:
 //
 //	git rebase --onto <newBase> <oldBase> <branch>

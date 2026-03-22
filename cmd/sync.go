@@ -58,7 +58,7 @@ func runSync(cfg *config.Config, _ *syncOptions) error {
 
 	// --- Step 1: Fetch ---
 	// Enable git rerere so conflict resolutions are remembered.
-	_ = git.EnableRerere()
+	ensureRerere(cfg)
 
 	if err := git.Fetch(remote); err != nil {
 		cfg.Warningf("Failed to fetch %s: %v", remote, err)
