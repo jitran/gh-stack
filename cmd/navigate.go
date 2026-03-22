@@ -11,7 +11,7 @@ import (
 func UpCmd(cfg *config.Config) *cobra.Command {
 	return &cobra.Command{
 		Use:   "up [n]",
-		Short: "Move up in the stack (toward the top)",
+		Short: "Check out a branch further up in the stack (further from the trunk)",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			n := 1
@@ -26,7 +26,7 @@ func UpCmd(cfg *config.Config) *cobra.Command {
 func DownCmd(cfg *config.Config) *cobra.Command {
 	return &cobra.Command{
 		Use:   "down [n]",
-		Short: "Move down in the stack (toward the trunk)",
+		Short: "Check out a branch further down in the stack (closer to the trunk)",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			n := 1
@@ -41,7 +41,7 @@ func DownCmd(cfg *config.Config) *cobra.Command {
 func TopCmd(cfg *config.Config) *cobra.Command {
 	return &cobra.Command{
 		Use:   "top",
-		Short: "Move to the top of the stack",
+		Short: "Check out the top branch of the stack (furthest from the trunk)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runNavigateToEnd(cfg, true)
 		},
@@ -51,7 +51,7 @@ func TopCmd(cfg *config.Config) *cobra.Command {
 func BottomCmd(cfg *config.Config) *cobra.Command {
 	return &cobra.Command{
 		Use:   "bottom",
-		Short: "Move to the bottom of the stack",
+		Short: "Check out the bottom branch of the stack (closest to the trunk)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runNavigateToEnd(cfg, false)
 		},
@@ -84,7 +84,7 @@ func runNavigate(cfg *config.Config, delta int) error {
 				cfg.Successf("Switched to %s", target)
 				return nil
 			}
-			cfg.Printf("already at the bottom of the stack")
+			cfg.Printf("Already at the bottom of the stack")
 			return nil
 		}
 		cfg.Errorf("current branch %q is not in the stack", currentBranch)
@@ -177,7 +177,7 @@ func runNavigate(cfg *config.Config, delta int) error {
 		moved = -moved
 	}
 
-	cfg.Successf("Moved %s %d %s to %s", direction, moved, plural(moved, "branch", "branches"), target)
+	cfg.Successf("Checked out %s, %d %s %s", target, moved, plural(moved, "branch", "branches"), direction)
 	return nil
 }
 
