@@ -3,6 +3,9 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"net/url"
+	"strconv"
+	"strings"
 
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/cli/go-gh/v2/pkg/prompter"
@@ -238,6 +241,68 @@ func activeBranchNames(s *stack.Stack) []string {
 		names[i] = b.Branch
 	}
 	return names
+}
+
+// resolvePR resolves a user-provided target to a stack and branch using
+// waterfall logic: PR URL → PR number → branch name.
+func resolvePR(sf *stack.StackFile, target string) (*stack.Stack, *stack.BranchRef, error) {
+	// Try parsing as a GitHub PR URL (e.g. https://github.com/owner/repo/pull/42).
+	if prNumber, ok := parsePRURL(target); ok {
+		s, b := sf.FindStackByPRNumber(prNumber)
+		if s != nil && b != nil {
+			return s, b, nil
+		}
+	}
+
+	// Try parsing as a PR number.
+	if prNumber, err := strconv.Atoi(target); err == nil && prNumber > 0 {
+		s, b := sf.FindStackByPRNumber(prNumber)
+		if s != nil && b != nil {
+			return s, b, nil
+		}
+	}
+
+	// Try matching as a branch name.
+	stacks := sf.FindAllStacksForBranch(target)
+	if len(stacks) > 0 {
+		s := stacks[0]
+		idx := s.IndexOf(target)
+		if idx >= 0 {
+			return s, &s.Branches[idx], nil
+		}
+		// Target matched as trunk — return the first active branch.
+		if len(s.Branches) > 0 {
+			return s, &s.Branches[0], nil
+		}
+	}
+
+	return nil, nil, fmt.Errorf(
+		"no locally tracked stack found for %q\n"+
+			"This command currently only works with stacks created locally.\n"+
+			"Server-side stack discovery will be available in a future release.",
+		target,
+	)
+}
+
+// parsePRURL extracts a PR number from a GitHub pull request URL.
+// Returns the number and true if the URL matches, or 0 and false otherwise.
+func parsePRURL(raw string) (int, bool) {
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return 0, false
+	}
+
+	// Match paths like /owner/repo/pull/123
+	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+	if len(parts) < 4 || parts[2] != "pull" {
+		return 0, false
+	}
+
+	n, err := strconv.Atoi(parts[3])
+	if err != nil || n <= 0 {
+		return 0, false
+	}
+	return n, true
 }
 
 // ensureRerere checks whether git rerere is enabled and, if not, prompts the

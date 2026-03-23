@@ -9,6 +9,8 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/github/gh-stack/internal/config"
 	"github.com/github/gh-stack/internal/git"
+	"github.com/github/gh-stack/internal/stack"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestIsInterruptError_DirectMatch(t *testing.T) {
@@ -137,5 +139,128 @@ func TestEnsureRerere_SkipsWhenNonInteractive(t *testing.T) {
 	}
 	if declinedSaved {
 		t.Error("SaveRerereDeclined should not be called in non-interactive mode")
+	}
+}
+
+func TestResolvePR_ByPRNumber(t *testing.T) {
+	sf := &stack.StackFile{
+		SchemaVersion: 1,
+		Stacks: []stack.Stack{
+			{
+				Trunk: stack.BranchRef{Branch: "main"},
+				Branches: []stack.BranchRef{
+					{Branch: "feat-1", PullRequest: &stack.PullRequestRef{Number: 42, URL: "https://github.com/o/r/pull/42"}},
+					{Branch: "feat-2", PullRequest: &stack.PullRequestRef{Number: 43, URL: "https://github.com/o/r/pull/43"}},
+				},
+			},
+		},
+	}
+
+	s, br, err := resolvePR(sf, "42")
+	assert.NoError(t, err)
+	assert.Equal(t, "feat-1", br.Branch)
+	assert.Equal(t, 42, br.PullRequest.Number)
+	assert.Equal(t, "main", s.Trunk.Branch)
+}
+
+func TestResolvePR_ByPRURL(t *testing.T) {
+	sf := &stack.StackFile{
+		SchemaVersion: 1,
+		Stacks: []stack.Stack{
+			{
+				Trunk: stack.BranchRef{Branch: "main"},
+				Branches: []stack.BranchRef{
+					{Branch: "feat-1", PullRequest: &stack.PullRequestRef{Number: 42, URL: "https://github.com/o/r/pull/42"}},
+				},
+			},
+		},
+	}
+
+	s, br, err := resolvePR(sf, "https://github.com/o/r/pull/42")
+	assert.NoError(t, err)
+	assert.Equal(t, "feat-1", br.Branch)
+	assert.Equal(t, "main", s.Trunk.Branch)
+}
+
+func TestResolvePR_ByBranchName(t *testing.T) {
+	sf := &stack.StackFile{
+		SchemaVersion: 1,
+		Stacks: []stack.Stack{
+			{
+				Trunk: stack.BranchRef{Branch: "main"},
+				Branches: []stack.BranchRef{
+					{Branch: "feat-1", PullRequest: &stack.PullRequestRef{Number: 42}},
+					{Branch: "feat-2", PullRequest: &stack.PullRequestRef{Number: 43}},
+				},
+			},
+		},
+	}
+
+	s, br, err := resolvePR(sf, "feat-2")
+	assert.NoError(t, err)
+	assert.Equal(t, "feat-2", br.Branch)
+	assert.Equal(t, 43, br.PullRequest.Number)
+	assert.Equal(t, "main", s.Trunk.Branch)
+}
+
+func TestResolvePR_NotFound(t *testing.T) {
+	sf := &stack.StackFile{
+		SchemaVersion: 1,
+		Stacks: []stack.Stack{
+			{
+				Trunk:    stack.BranchRef{Branch: "main"},
+				Branches: []stack.BranchRef{{Branch: "feat-1"}},
+			},
+		},
+	}
+
+	_, _, err := resolvePR(sf, "nonexistent")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no locally tracked stack found")
+}
+
+func TestResolvePR_URLPrecedesNumber(t *testing.T) {
+	// A PR URL that contains number 99 should resolve via URL parsing,
+	// even if PR #99 doesn't exist — the URL parser extracts the number.
+	sf := &stack.StackFile{
+		SchemaVersion: 1,
+		Stacks: []stack.Stack{
+			{
+				Trunk: stack.BranchRef{Branch: "main"},
+				Branches: []stack.BranchRef{
+					{Branch: "feat-1", PullRequest: &stack.PullRequestRef{Number: 99, URL: "https://github.com/o/r/pull/99"}},
+				},
+			},
+		},
+	}
+
+	_, br, err := resolvePR(sf, "https://github.com/o/r/pull/99")
+	assert.NoError(t, err)
+	assert.Equal(t, 99, br.PullRequest.Number)
+}
+
+func TestParsePRURL(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  string
+		wantN  int
+		wantOK bool
+	}{
+		{"standard URL", "https://github.com/owner/repo/pull/42", 42, true},
+		{"with trailing slash", "https://github.com/owner/repo/pull/42/", 42, true},
+		{"with files tab", "https://github.com/owner/repo/pull/42/files", 42, true},
+		{"not a PR URL", "https://github.com/owner/repo/issues/42", 0, false},
+		{"plain number", "42", 0, false},
+		{"branch name", "feat-1", 0, false},
+		{"empty", "", 0, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n, ok := parsePRURL(tt.input)
+			assert.Equal(t, tt.wantOK, ok)
+			if ok {
+				assert.Equal(t, tt.wantN, n)
+			}
+		})
 	}
 }

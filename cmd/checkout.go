@@ -3,7 +3,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/cli/go-gh/v2/pkg/prompter"
 	"github.com/github/gh-stack/internal/config"
@@ -82,11 +81,13 @@ func runCheckout(cfg *config.Config, opts *checkoutOptions) error {
 		targetBranch = s.Branches[len(s.Branches)-1].Branch
 	} else {
 		// Resolve target against local stacks
-		s, targetBranch, err = findStackByTarget(sf, opts.target)
+		var br *stack.BranchRef
+		s, br, err = resolvePR(sf, opts.target)
 		if err != nil {
 			cfg.Errorf("%s", err)
 			return nil
 		}
+		targetBranch = br.Branch
 	}
 
 	currentBranch, _ := git.CurrentBranch()
@@ -104,36 +105,6 @@ func runCheckout(cfg *config.Config, opts *checkoutOptions) error {
 	cfg.Successf("Switched to %s", targetBranch)
 	cfg.Printf("Stack: %s", s.DisplayChain())
 	return nil
-}
-
-// findStackByTarget resolves a target string against locally tracked stacks.
-// It tries PR number first (integer), then branch name.
-func findStackByTarget(sf *stack.StackFile, target string) (*stack.Stack, string, error) {
-	// Try parsing as a PR number
-	if prNumber, err := strconv.Atoi(target); err == nil && prNumber > 0 {
-		s, b := sf.FindStackByPRNumber(prNumber)
-		if s != nil && b != nil {
-			return s, b.Branch, nil
-		}
-	}
-
-	// Try matching as a branch name
-	stacks := sf.FindAllStacksForBranch(target)
-	if len(stacks) == 1 {
-		return stacks[0], target, nil
-	}
-	if len(stacks) > 1 {
-		// Target is in multiple stacks (e.g. a trunk branch) — return the first one.
-		// A future improvement could prompt for disambiguation here.
-		return stacks[0], target, nil
-	}
-
-	return nil, "", fmt.Errorf(
-		"no locally tracked stack found for %q\n"+
-			"This command currently only works with stacks created locally.\n"+
-			"Server-side stack discovery will be available in a future release.",
-		target,
-	)
 }
 
 // interactiveStackPicker shows a menu of all locally tracked stacks and returns
