@@ -77,7 +77,9 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 	// Push all active branches atomically
 	remote, err := pickRemote(cfg, currentBranch)
 	if err != nil {
-		cfg.Errorf("%s", err)
+		if !errors.Is(err, errInterrupt) {
+			cfg.Errorf("%s", err)
+		}
 		return nil
 	}
 	merged := s.MergedBranches()
@@ -118,7 +120,13 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 			if !opts.auto && cfg.IsInteractive() {
 				p := prompter.New(cfg.In, cfg.Out, cfg.Err)
 				input, err := p.Input(fmt.Sprintf("Title for PR (branch %s):", b.Branch), title)
-				if err == nil && input != "" {
+				if err != nil {
+					if isInterruptError(err) {
+						printInterrupt(cfg)
+						return nil
+					}
+					// Non-interrupt error: keep the auto-generated title.
+				} else if input != "" {
 					title = input
 				}
 			}
@@ -248,6 +256,10 @@ func pickRemote(cfg *config.Config, branch string) (string, error) {
 	p := prompter.New(cfg.In, cfg.Out, cfg.Err)
 	selected, promptErr := p.Select("Multiple remotes found. Which remote should be used?", "", multi.Remotes)
 	if promptErr != nil {
+		if isInterruptError(promptErr) {
+			printInterrupt(cfg)
+			return "", errInterrupt
+		}
 		return "", fmt.Errorf("remote selection: %w", promptErr)
 	}
 	return multi.Remotes[selected], nil

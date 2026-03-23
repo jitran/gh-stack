@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -88,12 +89,16 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 	currentBranch := result.CurrentBranch
 
 	// Enable git rerere so conflict resolutions are remembered.
-	ensureRerere(cfg)
+	if err := ensureRerere(cfg); errors.Is(err, errInterrupt) {
+		return nil
+	}
 
 	// Resolve remote for fetch and trunk comparison
 	remote, err := pickRemote(cfg, currentBranch)
 	if err != nil {
-		cfg.Errorf("%s", err)
+		if !errors.Is(err, errInterrupt) {
+			cfg.Errorf("%s", err)
+		}
 		return nil
 	}
 

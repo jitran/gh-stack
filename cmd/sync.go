@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -52,13 +53,17 @@ func runSync(cfg *config.Config, _ *syncOptions) error {
 	// Resolve remote once for fetch and push
 	remote, err := pickRemote(cfg, currentBranch)
 	if err != nil {
-		cfg.Errorf("%s", err)
+		if !errors.Is(err, errInterrupt) {
+			cfg.Errorf("%s", err)
+		}
 		return nil
 	}
 
 	// --- Step 1: Fetch ---
 	// Enable git rerere so conflict resolutions are remembered.
-	ensureRerere(cfg)
+	if err := ensureRerere(cfg); errors.Is(err, errInterrupt) {
+		return nil
+	}
 
 	if err := git.Fetch(remote); err != nil {
 		cfg.Warningf("Failed to fetch %s: %v", remote, err)

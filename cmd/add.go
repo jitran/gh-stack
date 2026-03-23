@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/cli/go-gh/v2/pkg/prompter"
 	"github.com/github/gh-stack/internal/branch"
 	"github.com/github/gh-stack/internal/config"
 	"github.com/github/gh-stack/internal/git"
@@ -150,10 +151,16 @@ func runAdd(cfg *config.Config, opts *addOptions, args []string) error {
 			branch.FollowsNumbering(s.Prefix, existingBranches[len(existingBranches)-1]) {
 			branchName = branch.NextNumberedName(s.Prefix, existingBranches)
 		} else {
-			fmt.Fprintf(cfg.Err, "Enter a name for the new branch: ")
-			if _, err := fmt.Fscan(cfg.In, &branchName); err != nil {
+			p := prompter.New(cfg.In, cfg.Out, cfg.Err)
+			input, err := p.Input("Enter a name for the new branch", "")
+			if err != nil {
+				if isInterruptError(err) {
+					printInterrupt(cfg)
+					return nil
+				}
 				return fmt.Errorf("could not read branch name: %w", err)
 			}
+			branchName = input
 			if s.Prefix != "" && branchName != "" {
 				branchName = s.Prefix + "/" + branchName
 				cfg.Infof("Branch name prefixed: %s", branchName)

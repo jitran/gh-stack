@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -58,7 +59,9 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 	trunk := opts.base
 
 	// Enable git rerere so conflict resolutions are remembered.
-	ensureRerere(cfg)
+	if err := ensureRerere(cfg); errors.Is(err, errInterrupt) {
+		return nil
+	}
 
 	if trunk == "" {
 		trunk, err = git.DefaultBranch()
@@ -160,6 +163,10 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 		if opts.prefix == "" {
 			prefixInput, err := p.Input("Set a branch prefix? (leave blank to skip)", "")
 			if err != nil {
+				if isInterruptError(err) {
+					printInterrupt(cfg)
+					return nil
+				}
 				cfg.Errorf("failed to read prefix: %s", err)
 				return nil
 			}
@@ -174,6 +181,10 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 				true,
 			)
 			if err != nil {
+				if isInterruptError(err) {
+					printInterrupt(cfg)
+					return nil
+				}
 				cfg.Errorf("failed to confirm branch selection: %s", err)
 				return nil
 			}
@@ -193,6 +204,10 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 			}
 			branchName, err := p.Input(prompt, "")
 			if err != nil {
+				if isInterruptError(err) {
+					printInterrupt(cfg)
+					return nil
+				}
 				cfg.Errorf("failed to read branch name: %s", err)
 				return nil
 			}

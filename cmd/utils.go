@@ -1,13 +1,33 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 
+	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/cli/go-gh/v2/pkg/prompter"
 	"github.com/github/gh-stack/internal/config"
 	"github.com/github/gh-stack/internal/git"
 	"github.com/github/gh-stack/internal/stack"
 )
+
+// errInterrupt is a sentinel returned when a prompt is cancelled via Ctrl+C.
+// Callers should exit silently (the friendly message is already printed).
+var errInterrupt = errors.New("interrupt")
+
+// isInterruptError reports whether err is (or wraps) the survey interrupt,
+// which is raised when the user presses Ctrl+C during a prompt.
+func isInterruptError(err error) bool {
+	return errors.Is(err, terminal.InterruptErr)
+}
+
+// printInterrupt prints a friendly message and should be called exactly once
+// per interrupted operation.  The leading newline ensures the message starts
+// on its own line even if the cursor was mid-prompt.
+func printInterrupt(cfg *config.Config) {
+	fmt.Fprintln(cfg.Err)
+	cfg.Infof("Received interrupt, aborting operation")
+}
 
 // loadStackResult holds everything returned by loadStack.
 type loadStackResult struct {
@@ -46,6 +66,9 @@ func loadStack(cfg *config.Config, branch string) (*loadStackResult, error) {
 
 	s, err := resolveStack(sf, branch, cfg)
 	if err != nil {
+		if errors.Is(err, errInterrupt) {
+			return nil, errInterrupt
+		}
 		cfg.Errorf("%s", err)
 		return nil, err
 	}
@@ -105,6 +128,10 @@ func resolveStack(sf *stack.StackFile, branch string, cfg *config.Config) (*stac
 	p := prompter.New(cfg.In, cfg.Out, cfg.Err)
 	selected, err := p.Select("Which stack would you like to use?", "", options)
 	if err != nil {
+		if isInterruptError(err) {
+			printInterrupt(cfg)
+			return nil, errInterrupt
+		}
 		return nil, fmt.Errorf("stack selection: %w", err)
 	}
 
@@ -217,25 +244,31 @@ func activeBranchNames(s *stack.Stack) []string {
 // user for permission before enabling it.  If the user previously declined,
 // the prompt is suppressed.  In non-interactive sessions the function is a
 // no-op so commands can still run in CI/scripting.
-func ensureRerere(cfg *config.Config) {
+//
+// Returns errInterrupt if the user pressed Ctrl+C during the prompt.
+func ensureRerere(cfg *config.Config) error {
 	enabled, err := git.IsRerereEnabled()
 	if err != nil || enabled {
-		return
+		return nil
 	}
 
 	declined, _ := git.IsRerereDeclined()
 	if declined {
-		return
+		return nil
 	}
 
 	if !cfg.IsInteractive() {
-		return
+		return nil
 	}
 
 	p := prompter.New(cfg.In, cfg.Out, cfg.Err)
 	ok, err := p.Confirm("Enable git rerere to remember conflict resolutions?", true)
 	if err != nil {
-		return
+		if isInterruptError(err) {
+			printInterrupt(cfg)
+			return errInterrupt
+		}
+		return nil
 	}
 
 	if ok {
@@ -243,4 +276,5 @@ func ensureRerere(cfg *config.Config) {
 	} else {
 		_ = git.SaveRerereDeclined()
 	}
+	return nil
 }

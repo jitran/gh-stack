@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -69,7 +70,9 @@ func runCheckout(cfg *config.Config, opts *checkoutOptions) error {
 		// Interactive picker mode
 		s, err = interactiveStackPicker(cfg, sf)
 		if err != nil {
-			cfg.Errorf("%s", err)
+			if !errors.Is(err, errInterrupt) {
+				cfg.Errorf("%s", err)
+			}
 			return nil
 		}
 		if s == nil {
@@ -158,6 +161,10 @@ func interactiveStackPicker(cfg *config.Config, sf *stack.StackFile) (*stack.Sta
 		options,
 	)
 	if err != nil {
+		if isInterruptError(err) {
+			printInterrupt(cfg)
+			return nil, errInterrupt
+		}
 		return nil, fmt.Errorf("stack selection: %w", err)
 	}
 
