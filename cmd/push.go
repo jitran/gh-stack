@@ -40,19 +40,19 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 	gitDir, err := git.GitDir()
 	if err != nil {
 		cfg.Errorf("not a git repository")
-		return nil
+		return ErrSilent
 	}
 
 	sf, err := stack.Load(gitDir)
 	if err != nil {
 		cfg.Errorf("failed to load stack state: %s", err)
-		return nil
+		return ErrSilent
 	}
 
 	currentBranch, err := git.CurrentBranch()
 	if err != nil {
 		cfg.Errorf("failed to get current branch: %s", err)
-		return nil
+		return ErrSilent
 	}
 
 	// Find the stack for the current branch without switching branches.
@@ -60,18 +60,18 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 	stacks := sf.FindAllStacksForBranch(currentBranch)
 	if len(stacks) == 0 {
 		cfg.Errorf("current branch %q is not part of a stack", currentBranch)
-		return nil
+		return ErrSilent
 	}
 	if len(stacks) > 1 {
 		cfg.Errorf("branch %q belongs to multiple stacks; checkout a non-trunk branch first", currentBranch)
-		return nil
+		return ErrSilent
 	}
 	s := stacks[0]
 
 	client, err := cfg.GitHubClient()
 	if err != nil {
 		cfg.Errorf("failed to create GitHub client: %s", err)
-		return nil
+		return ErrSilent
 	}
 
 	// Push all active branches atomically
@@ -80,7 +80,7 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 		if !errors.Is(err, errInterrupt) {
 			cfg.Errorf("%s", err)
 		}
-		return nil
+		return ErrSilent
 	}
 	merged := s.MergedBranches()
 	if len(merged) > 0 {
@@ -90,7 +90,7 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 	cfg.Printf("Pushing %d %s to %s...", len(activeBranches), plural(len(activeBranches), "branch", "branches"), remote)
 	if err := git.Push(remote, activeBranches, true, true); err != nil {
 		cfg.Errorf("failed to push: %s", err)
-		return nil
+		return ErrSilent
 	}
 
 	if opts.skipPRs {
@@ -123,7 +123,7 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 				if err != nil {
 					if isInterruptError(err) {
 						printInterrupt(cfg)
-						return nil
+						return ErrSilent
 					}
 					// Non-interrupt error: keep the auto-generated title.
 				} else if input != "" {
@@ -188,7 +188,7 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 
 	if err := stack.Save(gitDir, sf); err != nil {
 		cfg.Errorf("failed to save stack state: %s", err)
-		return nil
+		return ErrSilent
 	}
 
 	cfg.Successf("Pushed and synced %d branches", len(s.ActiveBranches()))

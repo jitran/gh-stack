@@ -41,7 +41,7 @@ func TestMerge_NoPullRequest(t *testing.T) {
 	errOut, _ := io.ReadAll(errR)
 	output := string(errOut)
 
-	assert.NoError(t, err)
+	assert.ErrorIs(t, err, ErrSilent)
 	assert.Contains(t, output, "no pull request found")
 	assert.Contains(t, output, "gh stack push")
 }
@@ -145,7 +145,7 @@ func TestMerge_OnTrunk(t *testing.T) {
 	errOut, _ := io.ReadAll(errR)
 	output := string(errOut)
 
-	assert.NoError(t, err)
+	assert.ErrorIs(t, err, ErrSilent)
 	assert.Contains(t, output, "not a stack branch")
 }
 

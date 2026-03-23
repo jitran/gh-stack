@@ -52,7 +52,7 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 	gitDir, err := git.GitDir()
 	if err != nil {
 		cfg.Errorf("not a git repository")
-		return nil
+		return ErrSilent
 	}
 
 	// Determine trunk branch
@@ -60,14 +60,14 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 
 	// Enable git rerere so conflict resolutions are remembered.
 	if err := ensureRerere(cfg); errors.Is(err, errInterrupt) {
-		return nil
+		return ErrSilent
 	}
 
 	if trunk == "" {
 		trunk, err = git.DefaultBranch()
 		if err != nil {
 			cfg.Errorf("unable to determine default branch\nUse -b to specify the trunk branch")
-			return nil
+			return ErrSilent
 		}
 	}
 
@@ -75,7 +75,7 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 	sf, err := stack.Load(gitDir)
 	if err != nil {
 		cfg.Errorf("failed to load stack state: %s", err)
-		return nil
+		return ErrSilent
 	}
 
 	// Set repository context
@@ -93,7 +93,7 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 		for _, s := range sf.FindAllStacksForBranch(currentBranch) {
 			if s.IndexOf(currentBranch) >= 0 {
 				cfg.Errorf("current branch %q is already part of a stack", currentBranch)
-				return nil
+				return ErrSilent
 			}
 		}
 	}
@@ -104,16 +104,16 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 		// Adopt mode: validate all specified branches exist
 		if len(opts.branches) == 0 {
 			cfg.Errorf("--adopt requires at least one branch name")
-			return nil
+			return ErrSilent
 		}
 		for _, b := range opts.branches {
 			if !git.BranchExists(b) {
 				cfg.Errorf("branch %q does not exist", b)
-				return nil
+				return ErrSilent
 			}
 			if err := sf.ValidateNoDuplicateBranch(b); err != nil {
 				cfg.Errorf("branch %q already exists in a stack", b)
-				return nil
+				return ErrSilent
 			}
 		}
 		branches = opts.branches
@@ -132,7 +132,7 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 						state = "merged"
 					}
 					cfg.Errorf("branch %q already has a %s PR (#%d: %s)", b, state, pr.Number, pr.URL)
-					return nil
+					return ErrSilent
 				}
 			}
 		}
@@ -141,12 +141,12 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 		for _, b := range opts.branches {
 			if err := sf.ValidateNoDuplicateBranch(b); err != nil {
 				cfg.Errorf("branch %q already exists in a stack", b)
-				return nil
+				return ErrSilent
 			}
 			if !git.BranchExists(b) {
 				if err := git.CreateBranch(b, trunk); err != nil {
 					cfg.Errorf("creating branch %s: %s", b, err)
-					return nil
+					return ErrSilent
 				}
 			}
 		}
@@ -155,7 +155,7 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 		// Interactive mode
 		if !cfg.IsInteractive() {
 			cfg.Errorf("interactive input required; provide branch names or use --adopt")
-			return nil
+			return ErrSilent
 		}
 		p := prompter.New(cfg.In, cfg.Out, cfg.Err)
 
@@ -165,10 +165,10 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 			if err != nil {
 				if isInterruptError(err) {
 					printInterrupt(cfg)
-					return nil
+					return ErrSilent
 				}
 				cfg.Errorf("failed to read prefix: %s", err)
-				return nil
+				return ErrSilent
 			}
 			opts.prefix = strings.TrimSpace(prefixInput)
 		}
@@ -183,15 +183,15 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 			if err != nil {
 				if isInterruptError(err) {
 					printInterrupt(cfg)
-					return nil
+					return ErrSilent
 				}
 				cfg.Errorf("failed to confirm branch selection: %s", err)
-				return nil
+				return ErrSilent
 			}
 			if useCurrentBranch {
 				if err := sf.ValidateNoDuplicateBranch(currentBranch); err != nil {
 					cfg.Errorf("branch %q already exists in the stack", currentBranch)
-					return nil
+					return ErrSilent
 				}
 				branches = []string{currentBranch}
 			}
@@ -206,10 +206,10 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 			if err != nil {
 				if isInterruptError(err) {
 					printInterrupt(cfg)
-					return nil
+					return ErrSilent
 				}
 				cfg.Errorf("failed to read branch name: %s", err)
-				return nil
+				return ErrSilent
 			}
 			branchName = strings.TrimSpace(branchName)
 
@@ -218,7 +218,7 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 				branchName = branch.NextNumberedName(opts.prefix, nil)
 			} else if branchName == "" {
 				cfg.Errorf("branch name cannot be empty")
-				return nil
+				return ErrSilent
 			} else if opts.prefix != "" {
 				// Prepend prefix to the user-provided name
 				branchName = opts.prefix + "/" + branchName
@@ -226,12 +226,12 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 
 			if err := sf.ValidateNoDuplicateBranch(branchName); err != nil {
 				cfg.Errorf("branch %q already exists in a stack", branchName)
-				return nil
+				return ErrSilent
 			}
 			if !git.BranchExists(branchName) {
 				if err := git.CreateBranch(branchName, trunk); err != nil {
 					cfg.Errorf("creating branch %s: %s", branchName, err)
-					return nil
+					return ErrSilent
 				}
 			}
 			branches = []string{branchName}
@@ -242,7 +242,7 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 	if opts.prefix != "" {
 		if err := git.ValidateRefName(opts.prefix); err != nil {
 			cfg.Errorf("invalid prefix %q: must be a valid git ref component", opts.prefix)
-			return nil
+			return ErrSilent
 		}
 	}
 
@@ -288,7 +288,7 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 		if currentBranch != lastBranch {
 			if err := git.CheckoutBranch(lastBranch); err != nil {
 				cfg.Errorf("switching to branch %s: %s", lastBranch, err)
-				return nil
+				return ErrSilent
 			}
 			cfg.Printf("Switched to branch %s", lastBranch)
 		} else {

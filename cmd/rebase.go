@@ -69,7 +69,7 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 	gitDir, err := git.GitDir()
 	if err != nil {
 		cfg.Errorf("not a git repository")
-		return nil
+		return ErrSilent
 	}
 
 	if opts.cont {
@@ -82,7 +82,7 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 
 	result, err := loadStack(cfg, opts.branch)
 	if err != nil {
-		return nil
+		return ErrSilent
 	}
 	sf := result.StackFile
 	s := result.Stack
@@ -90,7 +90,7 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 
 	// Enable git rerere so conflict resolutions are remembered.
 	if err := ensureRerere(cfg); errors.Is(err, errInterrupt) {
-		return nil
+		return ErrSilent
 	}
 
 	// Resolve remote for fetch and trunk comparison
@@ -99,7 +99,7 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 		if !errors.Is(err, errInterrupt) {
 			cfg.Errorf("%s", err)
 		}
-		return nil
+		return ErrSilent
 	}
 
 	if err := git.Fetch(remote); err != nil {
@@ -178,7 +178,7 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 	originalRefs, err := git.RevParseMap(branchNames)
 	if err != nil {
 		cfg.Errorf("failed to resolve branch SHAs: %s", err)
-		return nil
+		return ErrSilent
 	}
 
 	// Track --onto rebase state for squash-merged branches.
@@ -332,13 +332,13 @@ func continueRebase(cfg *config.Config, gitDir string) error {
 	state, err := loadRebaseState(gitDir)
 	if err != nil {
 		cfg.Errorf("no rebase in progress")
-		return nil
+		return ErrSilent
 	}
 
 	sf, err := stack.Load(gitDir)
 	if err != nil {
 		cfg.Errorf("failed to load stack state: %s", err)
-		return nil
+		return ErrSilent
 	}
 
 	// Use the saved original branch to find the stack, since git may be in
@@ -453,7 +453,7 @@ func continueRebase(cfg *config.Config, gitDir string) error {
 			} else {
 				if err := git.CheckoutBranch(branchName); err != nil {
 					cfg.Errorf("checking out %s: %s", branchName, err)
-					return nil
+					return ErrSilent
 				}
 				rebaseErr = git.Rebase(base)
 			}
@@ -507,7 +507,7 @@ func abortRebase(cfg *config.Config, gitDir string) error {
 	state, err := loadRebaseState(gitDir)
 	if err != nil {
 		cfg.Errorf("no rebase in progress")
-		return nil
+		return ErrSilent
 	}
 
 	if git.IsRebaseInProgress() {
@@ -533,7 +533,7 @@ func abortRebase(cfg *config.Config, gitDir string) error {
 		for _, e := range restoreErrors {
 			cfg.Printf("  %s", e)
 		}
-		return nil
+		return ErrSilent
 	}
 
 	cfg.Successf("Rebase aborted and branches restored")

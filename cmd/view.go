@@ -42,7 +42,7 @@ func ViewCmd(cfg *config.Config) *cobra.Command {
 func runView(cfg *config.Config, opts *viewOptions) error {
 	result, err := loadStack(cfg, "")
 	if err != nil {
-		return nil
+		return ErrSilent
 	}
 	gitDir := result.GitDir
 	sf := result.StackFile

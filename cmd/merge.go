@@ -35,7 +35,7 @@ func runMerge(cfg *config.Config, target string) error {
 	// Standard stack loading and validation.
 	result, err := loadStack(cfg, "")
 	if err != nil {
-		return nil
+		return ErrSilent
 	}
 	s := result.Stack
 	currentBranch := result.CurrentBranch
@@ -52,7 +52,7 @@ func runMerge(cfg *config.Config, target string) error {
 		_, br, err = resolvePR(result.StackFile, target)
 		if err != nil {
 			cfg.Errorf("%s", err)
-			return nil
+			return ErrSilent
 		}
 	} else {
 		idx := s.IndexOf(currentBranch)
@@ -62,7 +62,7 @@ func runMerge(cfg *config.Config, target string) error {
 				return nil
 			}
 			cfg.Errorf("current branch %q is not a stack branch (it may be the trunk)", currentBranch)
-			return nil
+			return ErrSilent
 		}
 		br = &s.Branches[idx]
 	}
@@ -70,7 +70,7 @@ func runMerge(cfg *config.Config, target string) error {
 	if br.PullRequest == nil {
 		cfg.Errorf("no pull request found for branch %q", currentBranch)
 		cfg.Printf("  Run %s to create PRs for this stack.", cfg.ColorCyan("gh stack push"))
-		return nil
+		return ErrSilent
 	}
 
 	if br.IsMerged() {

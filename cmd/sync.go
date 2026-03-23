@@ -43,7 +43,7 @@ conflicts interactively.`,
 func runSync(cfg *config.Config, _ *syncOptions) error {
 	result, err := loadStack(cfg, "")
 	if err != nil {
-		return nil
+		return ErrSilent
 	}
 	gitDir := result.GitDir
 	sf := result.StackFile
@@ -56,13 +56,13 @@ func runSync(cfg *config.Config, _ *syncOptions) error {
 		if !errors.Is(err, errInterrupt) {
 			cfg.Errorf("%s", err)
 		}
-		return nil
+		return ErrSilent
 	}
 
 	// --- Step 1: Fetch ---
 	// Enable git rerere so conflict resolutions are remembered.
 	if err := ensureRerere(cfg); errors.Is(err, errInterrupt) {
-		return nil
+		return ErrSilent
 	}
 
 	if err := git.Fetch(remote); err != nil {
@@ -280,7 +280,7 @@ func runSync(cfg *config.Config, _ *syncOptions) error {
 
 	if err := stack.Save(gitDir, sf); err != nil {
 		cfg.Errorf("failed to save stack state: %s", err)
-		return nil
+		return ErrSilent
 	}
 
 	cfg.Printf("")

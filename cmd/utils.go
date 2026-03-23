@@ -14,6 +14,10 @@ import (
 	"github.com/github/gh-stack/internal/stack"
 )
 
+// ErrSilent indicates the error has already been printed to the user.
+// Execute() will exit with code 1 but will not print the error again.
+var ErrSilent = errors.New("silent error")
+
 // errInterrupt is a sentinel returned when a prompt is cancelled via Ctrl+C.
 // Callers should exit silently (the friendly message is already printed).
 var errInterrupt = errors.New("interrupt")

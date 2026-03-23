@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -53,7 +54,9 @@ func RootCmd() *cobra.Command {
 func Execute() {
 	cmd := RootCmd()
 	if err := cmd.Execute(); err != nil {
-		fmt.Fprintln(cmd.ErrOrStderr(), err)
+		if !errors.Is(err, ErrSilent) {
+			fmt.Fprintln(cmd.ErrOrStderr(), err)
+		}
 		os.Exit(1)
 	}
 }

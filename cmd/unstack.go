@@ -35,7 +35,7 @@ func UnstackCmd(cfg *config.Config) *cobra.Command {
 func runUnstack(cfg *config.Config, opts *unstackOptions) error {
 	result, err := loadStack(cfg, opts.target)
 	if err != nil {
-		return nil
+		return ErrSilent
 	}
 	gitDir := result.GitDir
 	sf := result.StackFile
@@ -51,7 +51,7 @@ func runUnstack(cfg *config.Config, opts *unstackOptions) error {
 	sf.RemoveStackForBranch(target)
 	if err := stack.Save(gitDir, sf); err != nil {
 		cfg.Errorf("failed to save stack state: %s", err)
-		return nil
+		return ErrSilent
 	}
 	cfg.Successf("Stack removed from local tracking")
 
@@ -60,7 +60,7 @@ func runUnstack(cfg *config.Config, opts *unstackOptions) error {
 		client, err := cfg.GitHubClient()
 		if err != nil {
 			cfg.Errorf("failed to create GitHub client: %s", err)
-			return nil
+			return ErrSilent
 		}
 		if err := client.DeleteStack(); err != nil {
 			cfg.Warningf("%v", err)

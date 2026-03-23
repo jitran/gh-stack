@@ -287,7 +287,7 @@ func TestRebase_Continue_NoState(t *testing.T) {
 	errOut, _ := io.ReadAll(errR)
 	output := string(errOut)
 
-	assert.NoError(t, err, "should return nil (error printed via cfg.Errorf)")
+	assert.ErrorIs(t, err, ErrSilent)
 	assert.Contains(t, output, "no rebase in progress")
 }
 
