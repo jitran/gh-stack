@@ -61,7 +61,7 @@ func BottomCmd(cfg *config.Config) *cobra.Command {
 func runNavigate(cfg *config.Config, delta int) error {
 	result, err := loadStack(cfg, "")
 	if err != nil {
-		return ErrSilent
+		return ErrNotInStack
 	}
 	s := result.Stack
 	currentBranch := result.CurrentBranch
@@ -175,14 +175,14 @@ func runNavigate(cfg *config.Config, delta int) error {
 func runNavigateToEnd(cfg *config.Config, top bool) error {
 	result, err := loadStack(cfg, "")
 	if err != nil {
-		return ErrSilent
+		return ErrNotInStack
 	}
 	s := result.Stack
 	currentBranch := result.CurrentBranch
 
 	if len(s.Branches) == 0 {
 		cfg.Errorf("stack has no branches")
-		return ErrSilent
+		return ErrNotInStack
 	}
 
 	var targetIdx int

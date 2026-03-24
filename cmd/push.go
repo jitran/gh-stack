@@ -40,19 +40,19 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 	gitDir, err := git.GitDir()
 	if err != nil {
 		cfg.Errorf("not a git repository")
-		return ErrSilent
+		return ErrNotInStack
 	}
 
 	sf, err := stack.Load(gitDir)
 	if err != nil {
 		cfg.Errorf("failed to load stack state: %s", err)
-		return ErrSilent
+		return ErrNotInStack
 	}
 
 	currentBranch, err := git.CurrentBranch()
 	if err != nil {
 		cfg.Errorf("failed to get current branch: %s", err)
-		return ErrSilent
+		return ErrNotInStack
 	}
 
 	// Find the stack for the current branch without switching branches.
@@ -60,18 +60,18 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 	stacks := sf.FindAllStacksForBranch(currentBranch)
 	if len(stacks) == 0 {
 		cfg.Errorf("current branch %q is not part of a stack", currentBranch)
-		return ErrSilent
+		return ErrNotInStack
 	}
 	if len(stacks) > 1 {
 		cfg.Errorf("branch %q belongs to multiple stacks; checkout a non-trunk branch first", currentBranch)
-		return ErrSilent
+		return ErrDisambiguate
 	}
 	s := stacks[0]
 
 	client, err := cfg.GitHubClient()
 	if err != nil {
 		cfg.Errorf("failed to create GitHub client: %s", err)
-		return ErrSilent
+		return ErrAPIFailure
 	}
 
 	// Push all active branches atomically

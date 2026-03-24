@@ -145,7 +145,7 @@ func TestMerge_OnTrunk(t *testing.T) {
 	errOut, _ := io.ReadAll(errR)
 	output := string(errOut)
 
-	assert.ErrorIs(t, err, ErrSilent)
+	assert.ErrorIs(t, err, ErrNotInStack)
 	assert.Contains(t, output, "not a stack branch")
 }
 

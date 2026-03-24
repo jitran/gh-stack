@@ -35,7 +35,7 @@ func runMerge(cfg *config.Config, target string) error {
 	// Standard stack loading and validation.
 	result, err := loadStack(cfg, "")
 	if err != nil {
-		return ErrSilent
+		return ErrNotInStack
 	}
 	s := result.Stack
 	currentBranch := result.CurrentBranch
@@ -52,7 +52,7 @@ func runMerge(cfg *config.Config, target string) error {
 		_, br, err = resolvePR(result.StackFile, target)
 		if err != nil {
 			cfg.Errorf("%s", err)
-			return ErrSilent
+			return ErrNotInStack
 		}
 	} else {
 		idx := s.IndexOf(currentBranch)
@@ -62,7 +62,7 @@ func runMerge(cfg *config.Config, target string) error {
 				return nil
 			}
 			cfg.Errorf("current branch %q is not a stack branch (it may be the trunk)", currentBranch)
-			return ErrSilent
+			return ErrNotInStack
 		}
 		br = &s.Branches[idx]
 	}

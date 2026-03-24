@@ -250,7 +250,7 @@ func TestRebase_ConflictSavesState(t *testing.T) {
 	output := string(errOut)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "rebase conflict on b2")
+	assert.ErrorIs(t, err, ErrConflict)
 	assert.Contains(t, output, "--continue")
 
 	// Verify state file was saved

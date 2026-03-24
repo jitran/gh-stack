@@ -46,12 +46,12 @@ func runAdd(cfg *config.Config, opts *addOptions, args []string) error {
 	// Validate flag combinations
 	if opts.stageAll && opts.stageTracked {
 		cfg.Errorf("flags -A and -u are mutually exclusive")
-		return ErrSilent
+		return ErrInvalidArgs
 	}
 
 	result, err := loadStack(cfg, "")
 	if err != nil {
-		return ErrSilent
+		return ErrNotInStack
 	}
 	gitDir := result.GitDir
 	sf := result.StackFile
@@ -69,7 +69,7 @@ func runAdd(cfg *config.Config, opts *addOptions, args []string) error {
 	// a new branch from it). Only block if we're in the middle of the stack.
 	if idx >= 0 && idx < len(s.Branches)-1 {
 		cfg.Errorf("can only add branches on top of the stack; run `%s` to switch to %q", cfg.ColorCyan("gh stack top"), s.Branches[len(s.Branches)-1].Branch)
-		return ErrSilent
+		return ErrInvalidArgs
 	}
 
 	// Check if the current branch is a stack branch with no unique commits
@@ -152,17 +152,17 @@ func runAdd(cfg *config.Config, opts *addOptions, args []string) error {
 
 	if branchName == "" {
 		cfg.Errorf("branch name cannot be empty")
-		return ErrSilent
+		return ErrInvalidArgs
 	}
 
 	if err := sf.ValidateNoDuplicateBranch(branchName); err != nil {
 		cfg.Errorf("branch %q already exists in the stack", branchName)
-		return ErrSilent
+		return ErrInvalidArgs
 	}
 
 	if git.BranchExists(branchName) {
 		cfg.Errorf("branch %q already exists", branchName)
-		return ErrSilent
+		return ErrInvalidArgs
 	}
 
 	// Stage changes before creating the branch so we can fail early if

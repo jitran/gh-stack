@@ -69,7 +69,7 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 	gitDir, err := git.GitDir()
 	if err != nil {
 		cfg.Errorf("not a git repository")
-		return ErrSilent
+		return ErrNotInStack
 	}
 
 	if opts.cont {
@@ -82,7 +82,7 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 
 	result, err := loadStack(cfg, opts.branch)
 	if err != nil {
-		return ErrSilent
+		return ErrNotInStack
 	}
 	sf := result.StackFile
 	s := result.Stack
@@ -242,7 +242,7 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 					br.Branch, cfg.ColorCyan("gh stack rebase --continue"))
 				cfg.Printf("Or abort this operation with `%s`",
 					cfg.ColorCyan("gh stack rebase --abort"))
-				return fmt.Errorf("rebase conflict on %s", br.Branch)
+				return ErrConflict
 			}
 
 			cfg.Successf("Rebased %s onto %s (squash-merge detected)", br.Branch, newBase)
@@ -290,7 +290,7 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 					br.Branch, cfg.ColorCyan("gh stack rebase --continue"))
 				cfg.Printf("Or abort this operation with `%s`",
 					cfg.ColorCyan("gh stack rebase --abort"))
-				return fmt.Errorf("rebase conflict on %s", br.Branch)
+				return ErrConflict
 			}
 
 			cfg.Successf("Rebased %s onto %s", br.Branch, base)
@@ -338,7 +338,7 @@ func continueRebase(cfg *config.Config, gitDir string) error {
 	sf, err := stack.Load(gitDir)
 	if err != nil {
 		cfg.Errorf("failed to load stack state: %s", err)
-		return ErrSilent
+		return ErrNotInStack
 	}
 
 	// Use the saved original branch to find the stack, since git may be in
@@ -440,7 +440,7 @@ func continueRebase(cfg *config.Config, gitDir string) error {
 					branchName, cfg.ColorCyan("gh stack rebase --continue"))
 				cfg.Printf("Or abort this operation with `%s`",
 					cfg.ColorCyan("gh stack rebase --abort"))
-				return fmt.Errorf("rebase conflict on %s", branchName)
+				return ErrConflict
 			}
 
 			cfg.Successf("Rebased %s onto %s (squash-merge detected)", branchName, newBase)
@@ -480,7 +480,7 @@ func continueRebase(cfg *config.Config, gitDir string) error {
 					branchName, cfg.ColorCyan("gh stack rebase --continue"))
 				cfg.Printf("Or abort this operation with `%s`",
 					cfg.ColorCyan("gh stack rebase --abort"))
-				return fmt.Errorf("rebase conflict on %s", branchName)
+				return ErrConflict
 			}
 
 			cfg.Successf("Rebased %s onto %s", branchName, base)

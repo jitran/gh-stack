@@ -16,7 +16,35 @@ import (
 
 // ErrSilent indicates the error has already been printed to the user.
 // Execute() will exit with code 1 but will not print the error again.
-var ErrSilent = errors.New("silent error")
+var ErrSilent = &ExitError{Code: 1}
+
+// Typed exit errors for programmatic detection by scripts and agents.
+var (
+	ErrNotInStack   = &ExitError{Code: 2} // branch/stack not found
+	ErrConflict     = &ExitError{Code: 3} // rebase conflict
+	ErrAPIFailure   = &ExitError{Code: 4} // GitHub API error
+	ErrInvalidArgs  = &ExitError{Code: 5} // invalid arguments or flags
+	ErrDisambiguate = &ExitError{Code: 6} // multiple stacks/remotes, can't auto-select
+	ErrRebaseActive = &ExitError{Code: 7} // rebase already in progress
+)
+
+// ExitError is returned by commands to indicate a specific exit code.
+// Execute() extracts the code and passes it to os.Exit.
+type ExitError struct {
+	Code int
+}
+
+func (e *ExitError) Error() string {
+	return fmt.Sprintf("exit status %d", e.Code)
+}
+
+func (e *ExitError) Is(target error) bool {
+	t, ok := target.(*ExitError)
+	if !ok {
+		return false
+	}
+	return e.Code == t.Code
+}
 
 // errInterrupt is a sentinel returned when a prompt is cancelled via Ctrl+C.
 // Callers should exit silently (the friendly message is already printed).

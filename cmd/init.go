@@ -52,7 +52,7 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 	gitDir, err := git.GitDir()
 	if err != nil {
 		cfg.Errorf("not a git repository")
-		return ErrSilent
+		return ErrNotInStack
 	}
 
 	// Determine trunk branch
@@ -67,7 +67,7 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 		trunk, err = git.DefaultBranch()
 		if err != nil {
 			cfg.Errorf("unable to determine default branch\nUse -b to specify the trunk branch")
-			return ErrSilent
+			return ErrNotInStack
 		}
 	}
 
@@ -75,7 +75,7 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 	sf, err := stack.Load(gitDir)
 	if err != nil {
 		cfg.Errorf("failed to load stack state: %s", err)
-		return ErrSilent
+		return ErrNotInStack
 	}
 
 	// Set repository context
@@ -93,7 +93,7 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 		for _, s := range sf.FindAllStacksForBranch(currentBranch) {
 			if s.IndexOf(currentBranch) >= 0 {
 				cfg.Errorf("current branch %q is already part of a stack", currentBranch)
-				return ErrSilent
+				return ErrInvalidArgs
 			}
 		}
 	}
@@ -104,16 +104,16 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 		// Adopt mode: validate all specified branches exist
 		if len(opts.branches) == 0 {
 			cfg.Errorf("--adopt requires at least one branch name")
-			return ErrSilent
+			return ErrInvalidArgs
 		}
 		for _, b := range opts.branches {
 			if !git.BranchExists(b) {
 				cfg.Errorf("branch %q does not exist", b)
-				return ErrSilent
+				return ErrInvalidArgs
 			}
 			if err := sf.ValidateNoDuplicateBranch(b); err != nil {
 				cfg.Errorf("branch %q already exists in a stack", b)
-				return ErrSilent
+				return ErrInvalidArgs
 			}
 		}
 		branches = opts.branches
@@ -132,7 +132,7 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 						state = "merged"
 					}
 					cfg.Errorf("branch %q already has a %s PR (#%d: %s)", b, state, pr.Number, pr.URL)
-					return ErrSilent
+					return ErrInvalidArgs
 				}
 			}
 		}
@@ -141,7 +141,7 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 		for _, b := range opts.branches {
 			if err := sf.ValidateNoDuplicateBranch(b); err != nil {
 				cfg.Errorf("branch %q already exists in a stack", b)
-				return ErrSilent
+				return ErrInvalidArgs
 			}
 			if !git.BranchExists(b) {
 				if err := git.CreateBranch(b, trunk); err != nil {
@@ -155,7 +155,7 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 		// Interactive mode
 		if !cfg.IsInteractive() {
 			cfg.Errorf("interactive input required; provide branch names or use --adopt")
-			return ErrSilent
+			return ErrInvalidArgs
 		}
 		p := prompter.New(cfg.In, cfg.Out, cfg.Err)
 
@@ -191,7 +191,7 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 			if useCurrentBranch {
 				if err := sf.ValidateNoDuplicateBranch(currentBranch); err != nil {
 					cfg.Errorf("branch %q already exists in the stack", currentBranch)
-					return ErrSilent
+					return ErrInvalidArgs
 				}
 				branches = []string{currentBranch}
 			}
@@ -218,7 +218,7 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 				branchName = branch.NextNumberedName(opts.prefix, nil)
 			} else if branchName == "" {
 				cfg.Errorf("branch name cannot be empty")
-				return ErrSilent
+				return ErrInvalidArgs
 			} else if opts.prefix != "" {
 				// Prepend prefix to the user-provided name
 				branchName = opts.prefix + "/" + branchName
@@ -226,7 +226,7 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 
 			if err := sf.ValidateNoDuplicateBranch(branchName); err != nil {
 				cfg.Errorf("branch %q already exists in a stack", branchName)
-				return ErrSilent
+				return ErrInvalidArgs
 			}
 			if !git.BranchExists(branchName) {
 				if err := git.CreateBranch(branchName, trunk); err != nil {
@@ -242,7 +242,7 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 	if opts.prefix != "" {
 		if err := git.ValidateRefName(opts.prefix); err != nil {
 			cfg.Errorf("invalid prefix %q: must be a valid git ref component", opts.prefix)
-			return ErrSilent
+			return ErrInvalidArgs
 		}
 	}
 

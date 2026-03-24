@@ -54,9 +54,11 @@ func RootCmd() *cobra.Command {
 func Execute() {
 	cmd := RootCmd()
 	if err := cmd.Execute(); err != nil {
-		if !errors.Is(err, ErrSilent) {
-			fmt.Fprintln(cmd.ErrOrStderr(), err)
+		var exitErr *ExitError
+		if errors.As(err, &exitErr) {
+			os.Exit(exitErr.Code)
 		}
+		fmt.Fprintln(cmd.ErrOrStderr(), err)
 		os.Exit(1)
 	}
 }

@@ -53,13 +53,13 @@ func runCheckout(cfg *config.Config, opts *checkoutOptions) error {
 	gitDir, err := git.GitDir()
 	if err != nil {
 		cfg.Errorf("not a git repository")
-		return ErrSilent
+		return ErrNotInStack
 	}
 
 	sf, err := stack.Load(gitDir)
 	if err != nil {
 		cfg.Errorf("failed to load stack state: %s", err)
-		return ErrSilent
+		return ErrNotInStack
 	}
 
 	var s *stack.Stack
@@ -85,7 +85,7 @@ func runCheckout(cfg *config.Config, opts *checkoutOptions) error {
 		s, br, err = resolvePR(sf, opts.target)
 		if err != nil {
 			cfg.Errorf("%s", err)
-			return ErrSilent
+			return ErrNotInStack
 		}
 		targetBranch = br.Branch
 	}

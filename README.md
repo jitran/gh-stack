@@ -427,3 +427,16 @@ gh stack push
 ```
 
 Compared to the typical workflow, there's no need to name branches, run `git add`, or run `git commit` separately. Each `gh stack add -Am "..."` does it all.
+
+## Exit codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 1 | Generic error |
+| 2 | Not in a stack / stack not found |
+| 3 | Rebase conflict |
+| 4 | GitHub API failure |
+| 5 | Invalid arguments or flags |
+| 6 | Disambiguation required (branch belongs to multiple stacks) |
+| 7 | Rebase already in progress |

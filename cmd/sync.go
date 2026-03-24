@@ -43,7 +43,7 @@ conflicts interactively.`,
 func runSync(cfg *config.Config, _ *syncOptions) error {
 	result, err := loadStack(cfg, "")
 	if err != nil {
-		return ErrSilent
+		return ErrNotInStack
 	}
 	gitDir := result.GitDir
 	sf := result.StackFile
