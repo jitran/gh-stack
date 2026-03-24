@@ -16,6 +16,7 @@ type pushOptions struct {
 	auto    bool
 	draft   bool
 	skipPRs bool
+	remote  string
 }
 
 func PushCmd(cfg *config.Config) *cobra.Command {
@@ -32,6 +33,7 @@ func PushCmd(cfg *config.Config) *cobra.Command {
 	cmd.Flags().BoolVar(&opts.auto, "auto", false, "Use auto-generated PR titles without prompting")
 	cmd.Flags().BoolVar(&opts.draft, "draft", false, "Create PRs as drafts")
 	cmd.Flags().BoolVar(&opts.skipPRs, "skip-prs", false, "Push branches without creating or updating PRs")
+	cmd.Flags().StringVar(&opts.remote, "remote", "", "Remote to push to (defaults to auto-detected remote)")
 
 	return cmd
 }
@@ -75,7 +77,7 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 	}
 
 	// Push all active branches atomically
-	remote, err := pickRemote(cfg, currentBranch)
+	remote, err := pickRemote(cfg, currentBranch, opts.remote)
 	if err != nil {
 		if !errors.Is(err, errInterrupt) {
 			cfg.Errorf("%s", err)
@@ -225,11 +227,16 @@ func humanize(s string) string {
 	}, s)
 }
 
-// pickRemote determines which remote to push to. It delegates to
+// pickRemote determines which remote to push to. If remoteOverride is
+// non-empty, it is returned directly. Otherwise it delegates to
 // git.ResolveRemote for config-based resolution and remote listing.
 // If multiple remotes exist with no configured default, the user is
 // prompted to select one interactively.
-func pickRemote(cfg *config.Config, branch string) (string, error) {
+func pickRemote(cfg *config.Config, branch, remoteOverride string) (string, error) {
+	if remoteOverride != "" {
+		return remoteOverride, nil
+	}
+
 	remote, err := git.ResolveRemote(branch)
 	if err == nil {
 		return remote, nil

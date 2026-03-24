@@ -20,6 +20,7 @@ type rebaseOptions struct {
 	upstack   bool
 	cont      bool
 	abort     bool
+	remote    string
 }
 
 type rebaseState struct {
@@ -61,6 +62,7 @@ layer in its commit history, rebasing if necessary.`,
 	cmd.Flags().BoolVar(&opts.upstack, "upstack", false, "Only rebase branches from current branch to top")
 	cmd.Flags().BoolVar(&opts.cont, "continue", false, "Continue rebase after resolving conflicts")
 	cmd.Flags().BoolVar(&opts.abort, "abort", false, "Abort rebase and restore all branches")
+	cmd.Flags().StringVar(&opts.remote, "remote", "", "Remote to fetch from (defaults to auto-detected remote)")
 
 	return cmd
 }
@@ -94,7 +96,7 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 	}
 
 	// Resolve remote for fetch and trunk comparison
-	remote, err := pickRemote(cfg, currentBranch)
+	remote, err := pickRemote(cfg, currentBranch, opts.remote)
 	if err != nil {
 		if !errors.Is(err, errInterrupt) {
 			cfg.Errorf("%s", err)

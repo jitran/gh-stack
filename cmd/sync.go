@@ -11,7 +11,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type syncOptions struct{}
+type syncOptions struct {
+	remote string
+}
 
 func SyncCmd(cfg *config.Config) *cobra.Command {
 	opts := &syncOptions{}
@@ -37,10 +39,12 @@ conflicts interactively.`,
 		},
 	}
 
+	cmd.Flags().StringVar(&opts.remote, "remote", "", "Remote to fetch from and push to (defaults to auto-detected remote)")
+
 	return cmd
 }
 
-func runSync(cfg *config.Config, _ *syncOptions) error {
+func runSync(cfg *config.Config, opts *syncOptions) error {
 	result, err := loadStack(cfg, "")
 	if err != nil {
 		return ErrNotInStack
@@ -51,7 +55,7 @@ func runSync(cfg *config.Config, _ *syncOptions) error {
 	currentBranch := result.CurrentBranch
 
 	// Resolve remote once for fetch and push
-	remote, err := pickRemote(cfg, currentBranch)
+	remote, err := pickRemote(cfg, currentBranch, opts.remote)
 	if err != nil {
 		if !errors.Is(err, errInterrupt) {
 			cfg.Errorf("%s", err)

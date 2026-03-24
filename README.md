@@ -179,6 +179,7 @@ If a rebase conflict occurs, the operation pauses and prints the conflicted file
 | `--upstack` | Only rebase branches from the current branch to the top |
 | `--continue` | Continue the rebase after resolving conflicts |
 | `--abort` | Abort the rebase and restore all branches to their pre-rebase state |
+| `--remote <name>` | Remote to fetch from (defaults to auto-detected remote) |
 
 | Argument | Description |
 |----------|-------------|
@@ -208,7 +209,7 @@ gh stack rebase --abort
 Fetch, rebase, push, and sync PR state in a single command.
 
 ```
-gh stack sync
+gh stack sync [flags]
 ```
 
 Performs a safe, non-interactive synchronization of the entire stack:
@@ -218,6 +219,10 @@ Performs a safe, non-interactive synchronization of the entire stack:
 3. **Cascade rebase** — rebases all stack branches onto their updated parents (only if trunk moved). If a conflict is detected, all branches are restored to their original state and you are advised to run `gh stack rebase` to resolve conflicts interactively
 4. **Push** — pushes all branches (uses `--force-with-lease` if a rebase occurred)
 5. **Sync PRs** — syncs PR state from GitHub and reports the status of each PR
+
+| Flag | Description |
+|------|-------------|
+| `--remote <name>` | Remote to fetch from and push to (defaults to auto-detected remote) |
 
 **Examples:**
 
@@ -242,6 +247,7 @@ When creating new PRs, you will be prompted to enter a title for each one. Press
 | `--auto` | Use auto-generated PR titles without prompting |
 | `--draft` | Create new PRs as drafts |
 | `--skip-prs` | Push branches without creating or updating PRs |
+| `--remote <name>` | Remote to push to (defaults to auto-detected remote) |
 
 **Examples:**
 
