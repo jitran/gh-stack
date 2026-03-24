@@ -53,7 +53,13 @@ func RootCmd() *cobra.Command {
 
 func Execute() {
 	cmd := RootCmd()
-	if err := cmd.Execute(); err != nil {
+
+	// Wrap in a "gh" parent so help output shows "gh stack" instead of just "stack".
+	wrapCmd := &cobra.Command{Use: "gh", SilenceUsage: true, SilenceErrors: true}
+	wrapCmd.AddCommand(cmd)
+	wrapCmd.SetArgs(append([]string{"stack"}, os.Args[1:]...))
+
+	if err := wrapCmd.Execute(); err != nil {
 		var exitErr *ExitError
 		if errors.As(err, &exitErr) {
 			os.Exit(exitErr.Code)
