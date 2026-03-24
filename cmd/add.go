@@ -111,8 +111,7 @@ func runAdd(cfg *config.Config, opts *addOptions, args []string) error {
 
 	if opts.message != "" {
 		// Auto-naming mode
-		isFirstBranch := len(existingBranches) == 0
-		name, info := branch.ResolveBranchName(s.Prefix, opts.message, explicitName, existingBranches, isFirstBranch)
+		name, info := branch.ResolveBranchName(s.Prefix, opts.message, explicitName, existingBranches, s.Numbered)
 		if name == "" {
 			cfg.Errorf("could not generate branch name")
 			return ErrSilent
@@ -124,10 +123,9 @@ func runAdd(cfg *config.Config, opts *addOptions, args []string) error {
 	} else if explicitName != "" {
 		branchName = applyPrefix(cfg, s.Prefix, explicitName)
 	} else {
-		// No -m, no explicit name — auto-generate if following numbered
+		// No -m, no explicit name — auto-generate if using numbered
 		// convention, otherwise prompt for a name.
-		if s.Prefix != "" && len(existingBranches) > 0 &&
-			branch.FollowsNumbering(s.Prefix, existingBranches[len(existingBranches)-1]) {
+		if s.Numbered && s.Prefix != "" {
 			branchName = branch.NextNumberedName(s.Prefix, existingBranches)
 		} else {
 			p := prompter.New(cfg.In, cfg.Out, cfg.Err)

@@ -278,6 +278,7 @@ func TestAdd_NumberedNaming(t *testing.T) {
 	gitDir := t.TempDir()
 	saveStack(t, gitDir, stack.Stack{
 		Prefix:   "feat",
+		Numbered: true,
 		Trunk:    stack.BranchRef{Branch: "main"},
 		Branches: []stack.BranchRef{{Branch: "feat/01"}},
 	})

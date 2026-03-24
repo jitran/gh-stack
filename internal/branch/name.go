@@ -97,10 +97,10 @@ func NextNumberedName(prefix string, existingBranches []string) string {
 //   - message: commit message (from -m flag; may be empty if not using auto-naming)
 //   - explicitName: branch name provided as argument (may be empty)
 //   - existingBranches: current branch names in the stack
-//   - isFirstBranch: true if this is the first branch being added to the stack
+//   - numbered: true if the stack uses auto-incrementing numbered branches
 //
 // Returns the resolved branch name and an informational message (may be empty).
-func ResolveBranchName(prefix, message, explicitName string, existingBranches []string, isFirstBranch bool) (name string, info string) {
+func ResolveBranchName(prefix, message, explicitName string, existingBranches []string, numbered bool) (name string, info string) {
 	if explicitName != "" {
 		// Explicit name provided
 		if prefix != "" {
@@ -118,18 +118,10 @@ func ResolveBranchName(prefix, message, explicitName string, existingBranches []
 	}
 
 	if prefix != "" {
-		// Check if we should use numbered format
-		useNumbering := isFirstBranch
-		if !useNumbering && len(existingBranches) > 0 {
-			lastBranch := existingBranches[len(existingBranches)-1]
-			useNumbering = FollowsNumbering(prefix, lastBranch)
-		}
-
-		if useNumbering {
+		if numbered {
 			name = NextNumberedName(prefix, existingBranches)
 		} else {
 			name = prefix + "/" + DateSlug(message)
-			info = "Branch name auto-generated using date+slug format because existing branches don't follow numbering convention"
 		}
 	} else {
 		// No prefix — always use date+slug

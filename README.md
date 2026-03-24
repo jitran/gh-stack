@@ -71,7 +71,9 @@ Initialize a new stack in the current repository.
 gh stack init [branches...] [flags]
 ```
 
-Creates an entry in `.git/gh-stack` to track stack state. In interactive mode (no arguments), prompts you to name branches and offers to use the current branch as the first layer. In interactive mode, you'll also be prompted to set an optional branch prefix for auto-naming (unless adopting existing branches). When explicit branch names are given, creates any that don't already exist (branching from the trunk). The trunk defaults to the repository's default branch unless overridden with `--base`.
+Creates an entry in `.git/gh-stack` to track stack state. In interactive mode (no arguments), prompts you to name branches and offers to use the current branch as the first layer. In interactive mode, you'll also be prompted to set an optional branch prefix (unless adopting existing branches). When a prefix is set, branch names you enter are automatically prefixed. When explicit branch names are given, creates any that don't already exist (branching from the trunk). The trunk defaults to the repository's default branch unless overridden with `--base`.
+
+Use `--numbered` with `--prefix` to enable auto-incrementing numbered branch names (`prefix/01`, `prefix/02`, …). Without `--numbered`, you'll always be prompted to provide a meaningful branch name.
 
 Enables `git rerere` automatically so that conflict resolutions are remembered across rebases.
 
@@ -80,6 +82,7 @@ Enables `git rerere` automatically so that conflict resolutions are remembered a
 | `-b, --base <branch>` | Trunk branch for the stack (defaults to the repository's default branch) |
 | `-a, --adopt` | Adopt existing branches into a stack instead of creating new ones |
 | `-p, --prefix <string>` | Set a branch name prefix for the stack |
+| `-n, --numbered` | Use auto-incrementing numbered branch names (requires `--prefix`) |
 
 **Examples:**
 
@@ -96,8 +99,14 @@ gh stack init --base develop feature-auth
 # Adopt existing branches into a stack
 gh stack init --adopt feature-auth feature-api
 
-# Set a prefix for auto-naming branches
+# Set a prefix — you'll be prompted for a branch name
 gh stack init -p feat
+#    → prompts "Enter a name for the first branch (will be prefixed with feat/)"
+#    → type "auth" → creates feat/auth
+
+# Use numbered auto-incrementing branch names
+gh stack init -p feat --numbered
+#    → creates feat/01 automatically
 ```
 
 ### `gh stack add`
@@ -110,7 +119,7 @@ gh stack add [branch] [flags]
 
 Creates a new branch at the current HEAD, adds it to the top of the stack, and checks it out. Must be run while on the topmost branch of a stack. If no branch name is given, prompts for one.
 
-You can optionally stage changes and create a commit as part of the `add` flow. When `-m` is provided without an explicit branch name, the branch name is auto-generated. Auto-generated names use either numbered format (`prefix/01`, `prefix/02`) or date+slug format depending on prefix configuration and existing branch naming patterns.
+You can optionally stage changes and create a commit as part of the `add` flow. When `-m` is provided without an explicit branch name, the branch name is auto-generated. If the stack was created with `--numbered`, auto-generated names use numbered format (`prefix/01`, `prefix/02`); otherwise, date+slug format is used (e.g., `prefix/2025-03-24-add-login`).
 
 | Flag | Description |
 |------|-------------|
@@ -409,13 +418,13 @@ gh stack sync
 
 ## Abbreviated workflow
 
-If you want to minimize keystrokes, use a branch prefix and the `-Am` flags to fold staging, committing, and branch creation into a single command. Branch names are auto-generated from your commit messages.
+If you want to minimize keystrokes, use a branch prefix with `--numbered` and the `-Am` flags to fold staging, committing, and branch creation into a single command. Branch names are auto-generated as `prefix/01`, `prefix/02`, etc.
 
 When a branch has no commits yet (e.g., right after `init`), `add -Am` stages and commits directly on that branch instead of creating a new one. Once a branch has commits, `add -Am` creates a new branch, checks it out, and commits there.
 
 ```sh
-# 1. Start a stack with a prefix
-gh stack init -p feat
+# 1. Start a stack with a prefix and numbered branches
+gh stack init -p feat --numbered
 #    → creates feat/01 and checks it out
 
 # 2. Write code for the first layer

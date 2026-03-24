@@ -48,18 +48,75 @@ gh extension install github/gh-stack
 3. **Always use `--json` when viewing** to get structured output.
 4. **Use `--remote <name>` when multiple remotes are configured**, or set `remote.pushDefault` in git config.
 5. **Avoid branches shared across multiple stacks.** If a branch belongs to multiple stacks, commands exit with code 6. Check out a non-shared branch first.
+6. **Plan your stack layers by dependency order before writing code.** Foundational changes (models, APIs, shared utilities) go in lower branches; dependent changes (UI, consumers) go in higher branches. Think through the dependency chain before running `gh stack init`.
+7. **Use standard `git add` and `git commit` for staging and committing.** This gives you full control over which changes go into each branch. The `-Am` shortcut is available but should not be the default approach—stacked PRs are most effective when each branch contains a deliberate, logical set of changes.
+8. **Navigate down the stack when you need to change a lower layer.** If you're working on a frontend branch and realize you need API changes, don't hack around it at the current layer. Navigate to the appropriate branch (`gh stack down`, `gh stack checkout`, or `gh stack bottom`), make and commit the changes there, run `gh stack rebase --upstack`, then navigate back up to continue.
+
+## Thinking about stack structure
+
+Each branch in a stack should represent a **discrete, logical unit of work** that can be reviewed independently. The changes within a branch should be cohesive—they belong together and make sense as a single PR.
+
+### Dependency chain
+
+Stacked branches form a dependency chain: each branch builds on the one below it. This means **foundational changes must go in lower (earlier) branches**, and code that depends on them goes in higher (later) branches.
+
+**Plan your layers before writing code.** For example, a full-stack feature might be structured like this (use branch names relevant to your actual task, not these generic ones):
+
+```
+main (trunk)
+ └── data-models       ← shared types, database schema
+  └── api-endpoints    ← API routes that use the models
+   └── frontend-ui     ← UI components that call the APIs
+    └── integration    ← tests that exercise the full stack
+```
+
+This is illustrative — choose branch names and layer boundaries that reflect the specific work you're doing. The key principle is: if code in one layer depends on code in another, the dependency must be in the same branch or a lower one.
+
+### Staging changes deliberately
+
+Don't dump all changes into a single commit or branch. Stage changes in batches based on logical grouping:
+
+```bash
+# Stage only the model files for this branch
+git add internal/models/user.go internal/models/session.go
+git commit -m "Add user and session models"
+
+# Stage related migration
+git add db/migrations/001_create_users.sql
+git commit -m "Add user table migration"
+```
+
+Multiple commits per branch are fine and encouraged—they make the PR easier to review. The key is that all commits in a branch relate to the same logical concern.
+
+### When to create a new branch
+
+Create a new branch (`gh stack add`) when you're starting a **different concern** that depends on what you've built so far. Signs it's time for a new branch:
+
+- You're switching from backend to frontend work
+- You're moving from core logic to tests or documentation
+- The next set of changes has a different reviewer audience
+- The current branch's PR is already large enough to review
+
+### One stack, one story
+
+Think of a stack from the reviewer's perspective: the stack of PRs should **tell a cohesive story** about a feature or project. A reviewer should be able to read the PRs in sequence and understand the progression of changes, with each PR being a small, logical piece of the whole.
+
+**When to use a single stack:** All the branches are part of the same feature, project, or closely related effort. Even if the work spans multiple concerns (models, API, frontend), they're all building toward the same goal.
+
+**When to create a separate stack:** The work is unrelated to your current stack — a different feature, a bug fix in an unrelated area, or an independent refactor. Don't mix unrelated work into a single stack just because you happen to be working on both. Start a new stack with `gh stack init` or switch to an existing stack with `gh stack checkout` for each distinct effort.
+
+Small, incidental fixes (e.g., fixing a typo you noticed) can go in the current stack if they're trivial. But if a change grows into its own project, it deserves its own stack.
 
 ## Quick reference
 
 | Task | Command |
 |------|---------|
-| Create a stack | `gh stack init -p feat auth` |
-| Create a stack with explicit branch names (no prefix) | `gh stack init branch-a` |
+| Create a stack | `gh stack init branch-a` |
+| Create a stack with a prefix | `gh stack init -p feat auth` |
 | Adopt existing branches | `gh stack init --adopt branch-a branch-b` |
 | Set custom trunk | `gh stack init --base develop branch-a` |
 | Add a branch to stack | `gh stack add branch-name` |
-| Add branch + stage all + commit | `gh stack add -Am "message" new-branch` |
-| Add branch + stage tracked + commit | `gh stack add -um "message" new-branch` |
+| Add branch + stage all + commit (shortcut) | `gh stack add -Am "message" new-branch` |
 | Push + create PRs | `gh stack push --auto` |
 | Push as drafts | `gh stack push --auto --draft` |
 | Push without creating PRs | `gh stack push --skip-prs` |
@@ -67,6 +124,7 @@ gh extension install github/gh-stack
 | Sync (fetch, rebase, push) | `gh stack sync` |
 | Sync with specific remote | `gh stack sync --remote origin` |
 | Rebase entire stack | `gh stack rebase` |
+| Rebase upstack only | `gh stack rebase --upstack` |
 | Continue after conflict | `gh stack rebase --continue` |
 | Abort rebase | `gh stack rebase --abort` |
 | View stack details (JSON) | `gh stack view --json` |
@@ -83,10 +141,11 @@ gh extension install github/gh-stack
 ### End-to-end: create a stack from scratch
 
 ```bash
-# 1. Initialize a stack with a prefix and first branch (feat/auth)
+# 1. Initialize a stack with the first branch
 gh stack init -p feat auth
+# → creates feat/auth and checks it out
 
-# 2. Write code and commit on the first branch
+# 2. Write code for the first layer (auth)
 cat > auth.go << 'EOF'
 package auth
 
@@ -97,10 +156,27 @@ func Middleware(next http.Handler) http.Handler {
     })
 }
 EOF
-gh stack add -Am "Add auth middleware"
-# → commits on feat/auth (no commits yet, so stays on current branch)
 
-# 3. Write more code and create the next layer
+# 3. Stage and commit using standard git commands
+git add auth.go
+git commit -m "Add auth middleware"
+
+# You can make multiple commits on the same branch
+cat > auth_test.go << 'EOF'
+package auth
+
+func TestMiddleware(t *testing.T) {
+    // test auth middleware
+}
+EOF
+git add auth_test.go
+git commit -m "Add auth middleware tests"
+
+# 4. When you're ready for a new concern, add the next branch
+gh stack add api-routes
+# → creates feat/api-routes (prefixed), checks it out
+
+# 5. Write code for the API layer
 cat > api.go << 'EOF'
 package api
 
@@ -108,30 +184,71 @@ func RegisterRoutes(mux *http.ServeMux) {
     mux.HandleFunc("/users", handleUsers)
 }
 EOF
-gh stack add -Am "Add API routes" api-routes
-# → creates feat/api-routes, checks it out, commits there
+git add api.go
+git commit -m "Add API routes"
 
-# 4. Add a third layer
-cat > api_test.go << 'EOF'
-package api
+# 6. Add a third layer for frontend
+gh stack add frontend
+# → creates feat/frontend, checks it out
 
-func TestRegisterRoutes(t *testing.T) {
-    // test routes
+cat > frontend.go << 'EOF'
+package frontend
+
+func RenderDashboard(w http.ResponseWriter) {
+    // calls the API endpoints from the layer below
 }
 EOF
-gh stack add -Am "Add API tests" api-tests
-# → creates feat/api-tests, checks it out, commits there
+git add frontend.go
+git commit -m "Add frontend dashboard"
 
-# 5. Push everything and create draft PRs
+# ── Stack complete: feat/auth → feat/api-routes → feat/frontend ──
+
+# 7. Push everything and create draft PRs
 gh stack push --auto --draft
 
-# 6. Verify the stack
+# 8. Verify the stack
 gh stack view --json
 ```
 
+> **Shortcut:** If you prefer a faster flow, `gh stack add -Am "message" branch-name` combines staging, committing, and branch creation into one command. This is useful for single-commit layers but bypasses deliberate staging.
+
+### Making mid-stack changes
+
+This is a critical workflow for agents. When you're working on a higher layer and realize you need to change something in a lower layer (e.g., you're building frontend components but need to add an API endpoint), **navigate down to the correct branch, make the change there, and rebase**.
+
+```bash
+# You're on feat/frontend but need to add an API endpoint
+
+# 1. Navigate to the API branch
+gh stack down
+# or: gh stack checkout feat/api-routes
+
+# 2. Make the change where it belongs
+cat > users_api.go << 'EOF'
+package api
+
+func handleGetUser(w http.ResponseWriter, r *http.Request) {
+    // new endpoint the frontend needs
+}
+EOF
+git add users_api.go
+git commit -m "Add get-user endpoint"
+
+# 3. Rebase everything above to pick up the change
+gh stack rebase --upstack
+
+# 4. Navigate back to where you were working
+gh stack top
+# or: gh stack checkout feat/frontend
+
+# 5. Continue working — the API changes are now available
+```
+
+**Why this matters:** If you make API changes on the frontend branch, those changes will end up in the wrong PR. The API PR won't include them, and the frontend PR will have unrelated API diffs mixed in. Always put changes in the branch where they logically belong.
+
 ### Modify a mid-stack branch and sync
 
-This is the most common agent task after initial creation: change a branch that isn't at the top, then rebase and push.
+When you need to revisit a branch after the initial creation (e.g., responding to review feedback):
 
 ```bash
 # 1. Navigate to the branch that needs changes
@@ -144,7 +261,8 @@ cat > auth.go << 'EOF'
 package auth
 // updated implementation
 EOF
-git add -A && git commit -m "Fix auth token validation"
+git add auth.go
+git commit -m "Fix auth token validation"
 
 # 3. Rebase everything above this branch
 gh stack rebase --upstack
@@ -209,8 +327,12 @@ gh stack rebase --abort
 # Get stack state as JSON
 output=$(gh stack view --json)
 
-# Check if any branch needs a rebase
-echo "$output" | jq '.branches[] | select(.needsRebase == true) | .name'
+# Check if any branch needs a rebase, and rebase if so
+needs_rebase=$(echo "$output" | jq '[.branches[] | select(.needsRebase == true)] | length')
+if [ "$needs_rebase" -gt 0 ]; then
+  echo "Branches need rebase, rebasing stack..."
+  gh stack rebase
+fi
 
 # Get all open PR URLs
 echo "$output" | jq -r '.branches[] | select(.pr.state == "OPEN") | .pr.url'
@@ -253,8 +375,9 @@ gh stack init --base develop branch-a branch-b
 # Adopt existing branches into a stack
 gh stack init --adopt branch-a branch-b branch-c
 
-# Set a branch prefix for auto-naming (used by `add -m`)
-gh stack init -p feat branch-a
+# Set a branch prefix (branch names you provide are automatically prefixed)
+gh stack init -p feat auth
+# → creates feat/auth
 ```
 
 | Flag | Description |
@@ -280,23 +403,29 @@ Add a new branch on top of the current stack. Must be run while on the topmost b
 gh stack add [branch] [flags]
 ```
 
+**Recommended workflow — create the branch, then use standard git:**
+
 ```bash
 # Create a new branch and switch to it
 gh stack add api-routes
 
+# Write code, stage deliberately, and commit
+git add internal/api/routes.go internal/api/handlers.go
+git commit -m "Add user API routes"
+
+# Make more commits on the same branch as needed
+git add internal/api/middleware.go
+git commit -m "Add rate limiting middleware"
+```
+
+**Shortcut — stage, commit, and branch in one command:**
+
+```bash
 # Create a new branch, stage all changes, and commit
 gh stack add -Am "Add API routes" api-routes
 
 # Create a new branch, stage tracked files only, and commit
 gh stack add -um "Fix auth bug" auth-fix
-```
-
-You can also create the branch first, then use regular git to make changes:
-
-```bash
-gh stack add api-routes
-# ... write code ...
-git add -A && git commit -m "Add API routes"
 ```
 
 | Flag | Description |
@@ -311,6 +440,7 @@ git add -A && git commit -m "Add API routes"
 - When the current branch has no commits (e.g., right after `init`), `add -Am` commits directly on the current branch instead of creating a new one.
 - If a prefix was set during `init`, the prefix is applied to branch names: `prefix/branch-name`.
 - If called from a branch that is not the topmost in the stack, exits with code 5: `"can only add branches on top of the stack"`. Use `gh stack top` to switch first.
+- **Uncommitted changes:** When using `gh stack add branch-name` without `-Am`, any uncommitted changes (staged or unstaged) in your working tree carry over to the new branch. This is standard git behavior — the working tree is not touched. Commit or stash changes on the current branch before running `add` if you want a clean starting point on the new branch.
 
 ---
 
@@ -590,9 +720,10 @@ gh stack unstack feature-auth --local
 
 ## Known limitations
 
-1. **Stack disambiguation cannot be bypassed.** If the current branch is the trunk of multiple stacks, commands error with code 6. Check out a non-shared branch first.
-2. **Multiple remotes require `--remote` or config.** If more than one remote is configured, pass `--remote <name>` or set `remote.pushDefault` in git config before running `push`, `sync`, or `rebase`.
-3. **Merging PRs:** Merging Stacked PRs from the CLI is not supported yet. Direct users to open the PR URL in a browser to merge PRs.
-4. **Server-side stack deletion is not supported.** Use `unstack --local`.
-5. **Server-side stack discovery is not supported.** `checkout` only works with locally tracked stacks.
-6. **PR title and body are auto-generated.** There is no flag to set a custom PR title or body during `push`. The title and body are generated from commit messages plus a footer. Use `gh pr edit` to modify PR title and body after creation.
+1. **Stacks are strictly linear.** Branching stacks (multiple children on a single parent) are not supported. Each branch has exactly one parent and at most one child. If you need parallel workstreams, use separate stacks.
+2. **Stack disambiguation cannot be bypassed.** If the current branch is the trunk of multiple stacks, commands error with code 6. Check out a non-shared branch first.
+3. **Multiple remotes require `--remote` or config.** If more than one remote is configured, pass `--remote <name>` or set `remote.pushDefault` in git config before running `push`, `sync`, or `rebase`.
+4. **Merging PRs:** Merging Stacked PRs from the CLI is not supported yet. Direct users to open the PR URL in a browser to merge PRs.
+5. **Server-side stack deletion is not supported.** Use `unstack --local`.
+6. **Server-side stack discovery is not supported.** `checkout` only works with locally tracked stacks.
+7. **PR title and body are auto-generated.** There is no flag to set a custom PR title or body during `push`. The title and body are generated from commit messages plus a footer. Use `gh pr edit` to modify PR title and body after creation.

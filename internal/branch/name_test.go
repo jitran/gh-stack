@@ -98,24 +98,23 @@ func TestResolveBranchName(t *testing.T) {
 		assert.Empty(t, info)
 	})
 
-	t.Run("message with prefix first branch uses numbered format", func(t *testing.T) {
+	t.Run("message with prefix and numbered uses numbered format", func(t *testing.T) {
 		name, _ := ResolveBranchName("stack", "add login", "", nil, true)
 		assert.Equal(t, "stack/01", name)
 	})
 
-	t.Run("message with prefix last branch follows numbering uses next number", func(t *testing.T) {
+	t.Run("message with prefix and numbered continues sequence", func(t *testing.T) {
 		existing := []string{"stack/01", "stack/02"}
-		name, _ := ResolveBranchName("stack", "add login", "", existing, false)
+		name, _ := ResolveBranchName("stack", "add login", "", existing, true)
 		assert.Equal(t, "stack/03", name)
 	})
 
-	t.Run("message with prefix last branch not numbered uses date-slug", func(t *testing.T) {
+	t.Run("message with prefix not numbered uses date-slug", func(t *testing.T) {
 		existing := []string{"stack/some-feature"}
-		name, info := ResolveBranchName("stack", "add login", "", existing, false)
+		name, _ := ResolveBranchName("stack", "add login", "", existing, false)
 		today := time.Now().Format("2006-01-02")
 		assert.True(t, strings.HasPrefix(name, "stack/"+today), "expected date prefix, got: %s", name)
 		assert.Contains(t, name, "add-login")
-		assert.NotEmpty(t, info, "should explain why date+slug was used")
 	})
 
 	t.Run("message without prefix uses date-slug", func(t *testing.T) {
