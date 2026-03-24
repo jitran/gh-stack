@@ -7,6 +7,7 @@ import (
 
 	"github.com/github/gh-stack/internal/config"
 	"github.com/github/gh-stack/internal/git"
+	"github.com/github/gh-stack/internal/github"
 	"github.com/github/gh-stack/internal/stack"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -82,6 +83,7 @@ func TestPush_SkipPRs(t *testing.T) {
 	defer restore()
 
 	cfg, _, errR := config.NewTestConfig()
+	cfg.GitHubClientOverride = &github.MockClient{}
 	cmd := PushCmd(cfg)
 	cmd.SetArgs([]string{"--skip-prs"})
 	cmd.SetOut(io.Discard)
@@ -124,6 +126,7 @@ func TestPush_SkipsMergedBranches(t *testing.T) {
 	defer restore()
 
 	cfg, _, errR := config.NewTestConfig()
+	cfg.GitHubClientOverride = &github.MockClient{}
 	cmd := PushCmd(cfg)
 	cmd.SetArgs([]string{"--skip-prs"})
 	cmd.SetOut(io.Discard)
@@ -158,6 +161,7 @@ func TestPush_PushFailure(t *testing.T) {
 	defer restore()
 
 	cfg, _, errR := config.NewTestConfig()
+	cfg.GitHubClientOverride = &github.MockClient{}
 	cmd := PushCmd(cfg)
 	cmd.SetArgs([]string{"--skip-prs"})
 	cmd.SetOut(io.Discard)

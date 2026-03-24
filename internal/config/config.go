@@ -26,6 +26,10 @@ type Config struct {
 	ColorMagenta func(string) string
 	ColorCyan    func(string) string
 	ColorGray    func(string) string
+
+	// GitHubClientOverride, when non-nil, is returned by GitHubClient()
+	// instead of creating a real client. Used in tests to inject a MockClient.
+	GitHubClientOverride ghapi.ClientOps
 }
 
 // New creates a new Config with terminal-aware output and color support.
@@ -109,7 +113,10 @@ func (c *Config) Repo() (repository.Repository, error) {
 	return repository.Current()
 }
 
-func (c *Config) GitHubClient() (*ghapi.Client, error) {
+func (c *Config) GitHubClient() (ghapi.ClientOps, error) {
+	if c.GitHubClientOverride != nil {
+		return c.GitHubClientOverride, nil
+	}
 	repo, err := c.Repo()
 	if err != nil {
 		return nil, fmt.Errorf("determining repository: %w", err)

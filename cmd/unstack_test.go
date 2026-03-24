@@ -8,6 +8,7 @@ import (
 
 	"github.com/github/gh-stack/internal/config"
 	"github.com/github/gh-stack/internal/git"
+	"github.com/github/gh-stack/internal/github"
 	"github.com/github/gh-stack/internal/stack"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -43,6 +44,7 @@ func TestUnstack_RemovesStack(t *testing.T) {
 	writeTwoStacks(t, gitDir, s1, s2)
 
 	cfg, outR, errR := config.NewTestConfig()
+	cfg.GitHubClientOverride = &github.MockClient{}
 	err := runUnstack(cfg, &unstackOptions{})
 	output := collectOutput(cfg, outR, errR)
 
