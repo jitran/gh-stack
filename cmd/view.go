@@ -45,6 +45,7 @@ func runView(cfg *config.Config, opts *viewOptions) error {
 	if err != nil {
 		return ErrNotInStack
 	}
+	defer result.Lock.Unlock()
 	gitDir := result.GitDir
 	sf := result.StackFile
 	s := result.Stack

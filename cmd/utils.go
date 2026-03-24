@@ -70,6 +70,7 @@ type loadStackResult struct {
 	StackFile     *stack.StackFile
 	Stack         *stack.Stack
 	CurrentBranch string
+	Lock          *stack.FileLock // caller must defer Lock.Unlock() if non-nil
 }
 
 // loadStack is the standard way to obtain a Stack for the current (or given)
@@ -83,6 +84,19 @@ func loadStack(cfg *config.Config, branch string) (*loadStackResult, error) {
 		cfg.Errorf("not a git repository")
 		return nil, fmt.Errorf("not a git repository")
 	}
+
+	lock, err := stack.Lock(gitDir)
+	if err != nil {
+		cfg.Warningf("could not acquire stack lock: %s", err)
+		// Proceed without lock — better than failing entirely.
+	}
+	// Release the lock if we fail before returning it to the caller.
+	success := false
+	defer func() {
+		if !success && lock != nil {
+			lock.Unlock()
+		}
+	}()
 
 	sf, err := stack.Load(gitDir)
 	if err != nil {
@@ -125,11 +139,13 @@ func loadStack(cfg *config.Config, branch string) (*loadStackResult, error) {
 		return nil, fmt.Errorf("failed to get current branch: %w", err)
 	}
 
+	success = true
 	return &loadStackResult{
 		GitDir:        gitDir,
 		StackFile:     sf,
 		Stack:         s,
 		CurrentBranch: currentBranch,
+		Lock:          lock,
 	}, nil
 }
 

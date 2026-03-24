@@ -37,6 +37,7 @@ func runUnstack(cfg *config.Config, opts *unstackOptions) error {
 	if err != nil {
 		return ErrNotInStack
 	}
+	defer result.Lock.Unlock()
 	gitDir := result.GitDir
 	sf := result.StackFile
 	s := result.Stack

@@ -73,6 +73,12 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 	}
 
 	// Load existing stack file
+	lock, err := stack.Lock(gitDir)
+	if err != nil {
+		cfg.Warningf("could not acquire stack lock: %s", err)
+	}
+	defer lock.Unlock()
+
 	sf, err := stack.Load(gitDir)
 	if err != nil {
 		cfg.Errorf("failed to load stack state: %s", err)

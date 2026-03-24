@@ -73,6 +73,7 @@ func runNavigate(cfg *config.Config, delta int) error {
 	if err != nil {
 		return ErrNotInStack
 	}
+	defer result.Lock.Unlock()
 	s := result.Stack
 	currentBranch := result.CurrentBranch
 
@@ -187,6 +188,7 @@ func runNavigateToEnd(cfg *config.Config, top bool) error {
 	if err != nil {
 		return ErrNotInStack
 	}
+	defer result.Lock.Unlock()
 	s := result.Stack
 	currentBranch := result.CurrentBranch
 

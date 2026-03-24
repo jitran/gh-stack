@@ -37,6 +37,7 @@ func runMerge(cfg *config.Config, target string) error {
 	if err != nil {
 		return ErrNotInStack
 	}
+	defer result.Lock.Unlock()
 	s := result.Stack
 	currentBranch := result.CurrentBranch
 
