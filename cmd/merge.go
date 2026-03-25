@@ -68,7 +68,7 @@ func runMerge(cfg *config.Config, target string) error {
 	}
 
 	if br.PullRequest == nil {
-		cfg.Errorf("no pull request found for branch %q", currentBranch)
+		cfg.Errorf("no pull request found for branch %q", br.Branch)
 		cfg.Printf("  Run %s to create PRs for this stack.", cfg.ColorCyan("gh stack push"))
 		return ErrSilent
 	}
