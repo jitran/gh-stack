@@ -145,8 +145,12 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 			}
 		}
 	} else if len(opts.branches) > 0 {
-		// Explicit branch names provided — create them
+		// Explicit branch names provided — apply prefix and create them
+		prefixed := make([]string, 0, len(opts.branches))
 		for _, b := range opts.branches {
+			if opts.prefix != "" {
+				b = opts.prefix + "/" + b
+			}
 			if err := sf.ValidateNoDuplicateBranch(b); err != nil {
 				cfg.Errorf("branch %q already exists in a stack", b)
 				return ErrInvalidArgs
@@ -157,8 +161,9 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 					return ErrSilent
 				}
 			}
+			prefixed = append(prefixed, b)
 		}
-		branches = opts.branches
+		branches = prefixed
 	} else {
 		// Interactive mode
 		if !cfg.IsInteractive() {

@@ -110,6 +110,33 @@ func TestInit_PrefixStoredInStack(t *testing.T) {
 	assert.Equal(t, "feat", sf.Stacks[0].Prefix)
 }
 
+func TestInit_PrefixAppliedToExplicitBranches(t *testing.T) {
+	gitDir := t.TempDir()
+	var created []string
+	restore := git.SetOps(&git.MockOps{
+		GitDirFn:        func() (string, error) { return gitDir, nil },
+		DefaultBranchFn: func() (string, error) { return "main", nil },
+		CurrentBranchFn: func() (string, error) { return "main", nil },
+		CreateBranchFn: func(name, base string) error {
+			created = append(created, name)
+			return nil
+		},
+	})
+	defer restore()
+
+	cfg, outR, errR := config.NewTestConfig()
+	runInit(cfg, &initOptions{branches: []string{"b1", "b2"}, prefix: "feat"})
+	output := collectOutput(cfg, outR, errR)
+
+	require.NotContains(t, output, "\u2717", "unexpected error")
+	assert.Equal(t, []string{"feat/b1", "feat/b2"}, created, "branches should be created with prefix")
+
+	sf, err := stack.Load(gitDir)
+	require.NoError(t, err, "loading stack")
+	names := sf.Stacks[0].BranchNames()
+	assert.Equal(t, []string{"feat/b1", "feat/b2"}, names, "stack should store prefixed branch names")
+}
+
 func TestInit_RerereAlreadyEnabled(t *testing.T) {
 	gitDir := t.TempDir()
 	enableRerereCalled := false
