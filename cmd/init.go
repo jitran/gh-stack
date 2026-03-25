@@ -101,6 +101,12 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 
 	var branches []string
 
+	// --adopt takes existing branches as-is; --prefix and --numbered don't apply.
+	if opts.adopt && (opts.prefix != "" || opts.numbered) {
+		cfg.Errorf("--adopt cannot be combined with --prefix or --numbered")
+		return ErrInvalidArgs
+	}
+
 	// Validate --numbered requires a prefix (either from flag or interactive input,
 	// but for non-interactive paths we can check early).
 	if opts.numbered && opts.prefix == "" && !cfg.IsInteractive() {

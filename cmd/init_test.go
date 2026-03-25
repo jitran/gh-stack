@@ -165,6 +165,40 @@ func TestInit_InvalidPrefixRejectedBeforeBranchCreation(t *testing.T) {
 	assert.Empty(t, created, "no branches should be created when prefix is invalid")
 }
 
+func TestInit_AdoptRejectsPrefix(t *testing.T) {
+	gitDir := t.TempDir()
+	restore := git.SetOps(&git.MockOps{
+		GitDirFn:        func() (string, error) { return gitDir, nil },
+		DefaultBranchFn: func() (string, error) { return "main", nil },
+		CurrentBranchFn: func() (string, error) { return "main", nil },
+	})
+	defer restore()
+
+	cfg, outR, errR := config.NewTestConfig()
+	err := runInit(cfg, &initOptions{adopt: true, branches: []string{"b1"}, prefix: "feat"})
+	output := collectOutput(cfg, outR, errR)
+
+	assert.ErrorIs(t, err, ErrInvalidArgs)
+	assert.Contains(t, output, "--adopt cannot be combined with --prefix or --numbered")
+}
+
+func TestInit_AdoptRejectsNumbered(t *testing.T) {
+	gitDir := t.TempDir()
+	restore := git.SetOps(&git.MockOps{
+		GitDirFn:        func() (string, error) { return gitDir, nil },
+		DefaultBranchFn: func() (string, error) { return "main", nil },
+		CurrentBranchFn: func() (string, error) { return "main", nil },
+	})
+	defer restore()
+
+	cfg, outR, errR := config.NewTestConfig()
+	err := runInit(cfg, &initOptions{adopt: true, branches: []string{"b1"}, numbered: true})
+	output := collectOutput(cfg, outR, errR)
+
+	assert.ErrorIs(t, err, ErrInvalidArgs)
+	assert.Contains(t, output, "--adopt cannot be combined with --prefix or --numbered")
+}
+
 func TestInit_RerereAlreadyEnabled(t *testing.T) {
 	gitDir := t.TempDir()
 	enableRerereCalled := false
