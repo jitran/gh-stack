@@ -260,13 +260,32 @@ func Load(gitDir string) (*StackFile, error) {
 
 // Save acquires an exclusive lock on the stack file, writes sf as JSON, and
 // releases the lock.  The lock is held only for the duration of the write.
+// Returns *LockError if the lock times out due to contention.
 func Save(gitDir string, sf *StackFile) error {
 	lock, err := Lock(gitDir)
 	if err != nil {
-		return &LockError{Err: err}
+		return err // *LockError for contention, plain error for I/O failures
 	}
 	defer lock.Unlock()
 	return writeStackFile(gitDir, sf)
+}
+
+// SaveNonBlocking attempts to save without blocking.  If another process holds
+// the lock, the save is silently skipped.  Use this for best-effort metadata
+// persistence (e.g. syncing PR state in view).
+func SaveNonBlocking(gitDir string, sf *StackFile) {
+	path := filepath.Join(gitDir, lockFileName)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return
+	}
+	if tryLockFile(f) != nil {
+		f.Close()
+		return
+	}
+	lock := &FileLock{f: f}
+	defer lock.Unlock()
+	_ = writeStackFile(gitDir, sf)
 }
 
 // SaveLocked writes the stack file without acquiring the lock.  The caller

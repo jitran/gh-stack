@@ -52,9 +52,15 @@ func Lock(gitDir string) (*FileLock, error) {
 		if err == nil {
 			return &FileLock{f: f}, nil
 		}
+		if !isLockBusy(err) {
+			// Unexpected error (e.g. bad fd) — don't retry.
+			f.Close()
+			return nil, fmt.Errorf("locking stack file: %w", err)
+		}
 		if time.Now().After(deadline) {
 			f.Close()
-			return nil, fmt.Errorf("timed out waiting for stack lock after %s — another gh-stack process may be running", LockTimeout)
+			return nil, &LockError{Err: fmt.Errorf(
+				"timed out waiting for stack lock after %s — another gh-stack process may be running", LockTimeout)}
 		}
 		time.Sleep(lockRetryInterval)
 	}

@@ -52,7 +52,7 @@ func runView(cfg *config.Config, opts *viewOptions) error {
 
 	// Sync PR state and save (best-effort).
 	syncStackPRs(cfg, s)
-	_ = stack.Save(gitDir, sf)
+	stack.SaveNonBlocking(gitDir, sf)
 
 	if opts.asJSON {
 		return viewJSON(cfg, s, currentBranch)

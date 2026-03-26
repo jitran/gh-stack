@@ -3,6 +3,7 @@
 package stack
 
 import (
+	"errors"
 	"os"
 
 	"golang.org/x/sys/windows"
@@ -20,6 +21,11 @@ func tryLockFile(f *os.File) error {
 		0,  // high word
 		ol,
 	)
+}
+
+// isLockBusy reports whether err indicates the lock is held by another process.
+func isLockBusy(err error) bool {
+	return errors.Is(err, windows.ERROR_LOCK_VIOLATION)
 }
 
 func unlockFile(f *os.File) {

@@ -1,6 +1,7 @@
 package stack
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -32,9 +33,13 @@ func TestLock_BlocksUntilReleased(t *testing.T) {
 	require.NoError(t, err)
 
 	acquired := make(chan struct{})
+	errCh := make(chan error, 1)
 	go func() {
 		lock2, err := Lock(dir)
-		require.NoError(t, err)
+		if err != nil {
+			errCh <- err
+			return
+		}
 		close(acquired)
 		lock2.Unlock()
 	}()
@@ -43,6 +48,8 @@ func TestLock_BlocksUntilReleased(t *testing.T) {
 	select {
 	case <-acquired:
 		t.Fatal("lock2 acquired while lock1 was still held")
+	case err := <-errCh:
+		t.Fatalf("lock2 failed: %v", err)
 	case <-time.After(300 * time.Millisecond):
 		// expected — lock2 is waiting
 	}
@@ -53,6 +60,8 @@ func TestLock_BlocksUntilReleased(t *testing.T) {
 	select {
 	case <-acquired:
 		// success
+	case err := <-errCh:
+		t.Fatalf("lock2 failed after lock1 released: %v", err)
 	case <-time.After(5 * time.Second):
 		t.Fatal("lock2 did not acquire after lock1 was released")
 	}
@@ -67,6 +76,7 @@ func TestLock_SerializesConcurrentAccess(t *testing.T) {
 
 	// Run 10 concurrent goroutines, each adding a stack under lock.
 	// Uses Lock + Load + SaveLocked for atomic read-modify-write.
+	errCh := make(chan error, 10)
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
@@ -74,17 +84,30 @@ func TestLock_SerializesConcurrentAccess(t *testing.T) {
 			defer wg.Done()
 
 			lock, err := Lock(dir)
-			require.NoError(t, err)
+			if err != nil {
+				errCh <- fmt.Errorf("goroutine %d Lock: %w", idx, err)
+				return
+			}
 			defer lock.Unlock()
 
 			loaded, err := Load(dir)
-			require.NoError(t, err)
+			if err != nil {
+				errCh <- fmt.Errorf("goroutine %d Load: %w", idx, err)
+				return
+			}
 
 			loaded.AddStack(makeStack("main", "branch"))
-			require.NoError(t, SaveLocked(dir, loaded))
+			if err := SaveLocked(dir, loaded); err != nil {
+				errCh <- fmt.Errorf("goroutine %d SaveLocked: %w", idx, err)
+			}
 		}(i)
 	}
 	wg.Wait()
+	close(errCh)
+
+	for err := range errCh {
+		t.Error(err)
+	}
 
 	// All 10 stacks should be present — no lost updates.
 	final, err := Load(dir)

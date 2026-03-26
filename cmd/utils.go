@@ -138,7 +138,7 @@ func loadStack(cfg *config.Config, branch string) (*loadStackResult, error) {
 }
 
 // handleSaveError translates a stack.Save error into the appropriate user
-// message and exit error.  Lock failures return ErrLockFailed (exit 8);
+// message and exit error.  Lock contention returns ErrLockFailed (exit 8);
 // other write failures return ErrSilent (exit 1).
 func handleSaveError(cfg *config.Config, err error) error {
 	var lockErr *stack.LockError
