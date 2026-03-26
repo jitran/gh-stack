@@ -15,6 +15,9 @@ export default defineConfig({
 			title: 'GitHub Stacked PRs',
 			description: 'Manage stacked branches and pull requests with the gh stack CLI extension.',
 			favicon: '/favicon.svg',
+			head: [
+				{ tag: 'meta', attrs: { name: 'robots', content: 'noindex, nofollow' } },
+			],
 			customCss: [
 				'./src/styles/custom.css',
 			],
