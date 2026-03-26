@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/cli/go-gh/v2/pkg/prompter"
@@ -51,6 +52,9 @@ func runAdd(cfg *config.Config, opts *addOptions, args []string) error {
 
 	result, err := loadStack(cfg, "")
 	if err != nil {
+		if errors.Is(err, ErrLockFailed) {
+			return ErrLockFailed
+		}
 		return ErrNotInStack
 	}
 	defer result.Lock.Unlock()

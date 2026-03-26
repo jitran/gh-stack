@@ -69,11 +69,10 @@ func BottomCmd(cfg *config.Config) *cobra.Command {
 }
 
 func runNavigate(cfg *config.Config, delta int) error {
-	result, err := loadStack(cfg, "")
+	result, err := loadStackReadOnly(cfg, "")
 	if err != nil {
 		return ErrNotInStack
 	}
-	defer result.Lock.Unlock()
 	s := result.Stack
 	currentBranch := result.CurrentBranch
 
@@ -184,11 +183,10 @@ func runNavigate(cfg *config.Config, delta int) error {
 }
 
 func runNavigateToEnd(cfg *config.Config, top bool) error {
-	result, err := loadStack(cfg, "")
+	result, err := loadStackReadOnly(cfg, "")
 	if err != nil {
 		return ErrNotInStack
 	}
-	defer result.Lock.Unlock()
 	s := result.Stack
 	currentBranch := result.CurrentBranch
 

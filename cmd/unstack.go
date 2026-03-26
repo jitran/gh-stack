@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"errors"
+
 	"github.com/github/gh-stack/internal/config"
 	"github.com/github/gh-stack/internal/stack"
 	"github.com/spf13/cobra"
@@ -35,6 +37,9 @@ func UnstackCmd(cfg *config.Config) *cobra.Command {
 func runUnstack(cfg *config.Config, opts *unstackOptions) error {
 	result, err := loadStack(cfg, opts.target)
 	if err != nil {
+		if errors.Is(err, ErrLockFailed) {
+			return ErrLockFailed
+		}
 		return ErrNotInStack
 	}
 	defer result.Lock.Unlock()

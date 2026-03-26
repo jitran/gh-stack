@@ -47,6 +47,9 @@ conflicts interactively.`,
 func runSync(cfg *config.Config, opts *syncOptions) error {
 	result, err := loadStack(cfg, "")
 	if err != nil {
+		if errors.Is(err, ErrLockFailed) {
+			return ErrLockFailed
+		}
 		return ErrNotInStack
 	}
 	defer result.Lock.Unlock()

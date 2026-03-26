@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -43,6 +44,9 @@ func ViewCmd(cfg *config.Config) *cobra.Command {
 func runView(cfg *config.Config, opts *viewOptions) error {
 	result, err := loadStack(cfg, "")
 	if err != nil {
+		if errors.Is(err, ErrLockFailed) {
+			return ErrLockFailed
+		}
 		return ErrNotInStack
 	}
 	defer result.Lock.Unlock()

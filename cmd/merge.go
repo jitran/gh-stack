@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/cli/go-gh/v2/pkg/browser"
@@ -35,6 +36,9 @@ func runMerge(cfg *config.Config, target string) error {
 	// Standard stack loading and validation.
 	result, err := loadStack(cfg, "")
 	if err != nil {
+		if errors.Is(err, ErrLockFailed) {
+			return ErrLockFailed
+		}
 		return ErrNotInStack
 	}
 	defer result.Lock.Unlock()

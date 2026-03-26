@@ -47,7 +47,8 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 
 	lock, err := stack.Lock(gitDir)
 	if err != nil {
-		cfg.Warningf("could not acquire stack lock: %s", err)
+		cfg.Errorf("another process is currently editing the stack — try again later")
+		return ErrLockFailed
 	}
 	defer lock.Unlock()
 

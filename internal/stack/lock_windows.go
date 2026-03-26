@@ -8,15 +8,16 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-func lockFile(f *os.File) error {
-	// Lock the first byte exclusively (blocks until available).
+// tryLockFile attempts a non-blocking exclusive lock.
+// Returns nil on success, or an error if the lock is held by another process.
+func tryLockFile(f *os.File) error {
 	ol := new(windows.Overlapped)
 	return windows.LockFileEx(
 		windows.Handle(f.Fd()),
-		windows.LOCKFILE_EXCLUSIVE_LOCK,
-		0,    // reserved
-		1,    // lock 1 byte
-		0,    // high word
+		windows.LOCKFILE_EXCLUSIVE_LOCK|windows.LOCKFILE_FAIL_IMMEDIATELY,
+		0,  // reserved
+		1,  // lock 1 byte
+		0,  // high word
 		ol,
 	)
 }

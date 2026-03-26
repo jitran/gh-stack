@@ -26,6 +26,7 @@ var (
 	ErrInvalidArgs  = &ExitError{Code: 5} // invalid arguments or flags
 	ErrDisambiguate = &ExitError{Code: 6} // multiple stacks/remotes, can't auto-select
 	ErrRebaseActive = &ExitError{Code: 7} // rebase already in progress
+	ErrLockFailed   = &ExitError{Code: 8} // could not acquire stack file lock
 )
 
 // ExitError is returned by commands to indicate a specific exit code.
@@ -87,13 +88,13 @@ func loadStack(cfg *config.Config, branch string) (*loadStackResult, error) {
 
 	lock, err := stack.Lock(gitDir)
 	if err != nil {
-		cfg.Warningf("could not acquire stack lock: %s", err)
-		// Proceed without lock — better than failing entirely.
+		cfg.Errorf("another process is currently editing the stack — try again later")
+		return nil, ErrLockFailed
 	}
 	// Release the lock if we fail before returning it to the caller.
 	success := false
 	defer func() {
-		if !success && lock != nil {
+		if !success {
 			lock.Unlock()
 		}
 	}()
@@ -146,6 +147,63 @@ func loadStack(cfg *config.Config, branch string) (*loadStackResult, error) {
 		Stack:         s,
 		CurrentBranch: currentBranch,
 		Lock:          lock,
+	}, nil
+}
+
+// loadStackReadOnly loads the stack without acquiring an exclusive lock.
+// Use this for commands that only read the stack and never call Save().
+func loadStackReadOnly(cfg *config.Config, branch string) (*loadStackResult, error) {
+	gitDir, err := git.GitDir()
+	if err != nil {
+		cfg.Errorf("not a git repository")
+		return nil, fmt.Errorf("not a git repository")
+	}
+
+	sf, err := stack.Load(gitDir)
+	if err != nil {
+		cfg.Errorf("failed to load stack state: %s", err)
+		return nil, fmt.Errorf("failed to load stack state: %w", err)
+	}
+
+	branchFromArg := branch != ""
+	if branch == "" {
+		branch, err = git.CurrentBranch()
+		if err != nil {
+			cfg.Errorf("failed to get current branch: %s", err)
+			return nil, fmt.Errorf("failed to get current branch: %w", err)
+		}
+	}
+
+	s, err := resolveStack(sf, branch, cfg)
+	if err != nil {
+		if errors.Is(err, errInterrupt) {
+			return nil, errInterrupt
+		}
+		cfg.Errorf("%s", err)
+		return nil, err
+	}
+	if s == nil {
+		if branchFromArg {
+			cfg.Errorf("branch %q is not part of a stack", branch)
+		} else {
+			cfg.Errorf("current branch %q is not part of a stack", branch)
+		}
+		cfg.Printf("Checkout an existing stack using `%s` or create a new stack using `%s`",
+			cfg.ColorCyan("gh stack checkout"), cfg.ColorCyan("gh stack init"))
+		return nil, fmt.Errorf("branch %q is not part of a stack", branch)
+	}
+
+	currentBranch, err := git.CurrentBranch()
+	if err != nil {
+		cfg.Errorf("failed to get current branch: %s", err)
+		return nil, fmt.Errorf("failed to get current branch: %w", err)
+	}
+
+	return &loadStackResult{
+		GitDir:        gitDir,
+		StackFile:     sf,
+		Stack:         s,
+		CurrentBranch: currentBranch,
 	}, nil
 }
 

@@ -75,7 +75,8 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 	// Load existing stack file
 	lock, err := stack.Lock(gitDir)
 	if err != nil {
-		cfg.Warningf("could not acquire stack lock: %s", err)
+		cfg.Errorf("another process is currently editing the stack — try again later")
+		return ErrLockFailed
 	}
 	defer lock.Unlock()
 

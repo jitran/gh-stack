@@ -84,6 +84,9 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 
 	result, err := loadStack(cfg, opts.branch)
 	if err != nil {
+		if errors.Is(err, ErrLockFailed) {
+			return ErrLockFailed
+		}
 		return ErrNotInStack
 	}
 	defer result.Lock.Unlock()
@@ -340,7 +343,8 @@ func continueRebase(cfg *config.Config, gitDir string) error {
 
 	lock, err := stack.Lock(gitDir)
 	if err != nil {
-		cfg.Warningf("could not acquire stack lock: %s", err)
+		cfg.Errorf("another process is currently editing the stack — try again later")
+		return ErrLockFailed
 	}
 	defer lock.Unlock()
 
