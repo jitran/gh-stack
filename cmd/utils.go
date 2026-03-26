@@ -71,7 +71,6 @@ type loadStackResult struct {
 	StackFile     *stack.StackFile
 	Stack         *stack.Stack
 	CurrentBranch string
-	Lock          *stack.FileLock // caller must defer Lock.Unlock() if non-nil
 }
 
 // loadStack is the standard way to obtain a Stack for the current (or given)
@@ -79,25 +78,15 @@ type loadStackResult struct {
 // branch, calls resolveStack (which may prompt for disambiguation), checks for
 // a nil stack, and re-reads the current branch (in case disambiguation caused
 // a checkout).  Errors are printed via cfg and returned.
+//
+// loadStack does NOT acquire the stack file lock.  The lock is acquired
+// automatically by stack.Save() when writing.
 func loadStack(cfg *config.Config, branch string) (*loadStackResult, error) {
 	gitDir, err := git.GitDir()
 	if err != nil {
 		cfg.Errorf("not a git repository")
 		return nil, fmt.Errorf("not a git repository")
 	}
-
-	lock, err := stack.Lock(gitDir)
-	if err != nil {
-		cfg.Errorf("another process is currently editing the stack — try again later")
-		return nil, ErrLockFailed
-	}
-	// Release the lock if we fail before returning it to the caller.
-	success := false
-	defer func() {
-		if !success {
-			lock.Unlock()
-		}
-	}()
 
 	sf, err := stack.Load(gitDir)
 	if err != nil {
@@ -140,71 +129,25 @@ func loadStack(cfg *config.Config, branch string) (*loadStackResult, error) {
 		return nil, fmt.Errorf("failed to get current branch: %w", err)
 	}
 
-	success = true
 	return &loadStackResult{
 		GitDir:        gitDir,
 		StackFile:     sf,
 		Stack:         s,
 		CurrentBranch: currentBranch,
-		Lock:          lock,
 	}, nil
 }
 
-// loadStackReadOnly loads the stack without acquiring an exclusive lock.
-// Use this for commands that only read the stack and never call Save().
-func loadStackReadOnly(cfg *config.Config, branch string) (*loadStackResult, error) {
-	gitDir, err := git.GitDir()
-	if err != nil {
-		cfg.Errorf("not a git repository")
-		return nil, fmt.Errorf("not a git repository")
+// handleSaveError translates a stack.Save error into the appropriate user
+// message and exit error.  Lock failures return ErrLockFailed (exit 8);
+// other write failures return ErrSilent (exit 1).
+func handleSaveError(cfg *config.Config, err error) error {
+	var lockErr *stack.LockError
+	if errors.As(err, &lockErr) {
+		cfg.Errorf("another process is currently editing the stack — try again later")
+		return ErrLockFailed
 	}
-
-	sf, err := stack.Load(gitDir)
-	if err != nil {
-		cfg.Errorf("failed to load stack state: %s", err)
-		return nil, fmt.Errorf("failed to load stack state: %w", err)
-	}
-
-	branchFromArg := branch != ""
-	if branch == "" {
-		branch, err = git.CurrentBranch()
-		if err != nil {
-			cfg.Errorf("failed to get current branch: %s", err)
-			return nil, fmt.Errorf("failed to get current branch: %w", err)
-		}
-	}
-
-	s, err := resolveStack(sf, branch, cfg)
-	if err != nil {
-		if errors.Is(err, errInterrupt) {
-			return nil, errInterrupt
-		}
-		cfg.Errorf("%s", err)
-		return nil, err
-	}
-	if s == nil {
-		if branchFromArg {
-			cfg.Errorf("branch %q is not part of a stack", branch)
-		} else {
-			cfg.Errorf("current branch %q is not part of a stack", branch)
-		}
-		cfg.Printf("Checkout an existing stack using `%s` or create a new stack using `%s`",
-			cfg.ColorCyan("gh stack checkout"), cfg.ColorCyan("gh stack init"))
-		return nil, fmt.Errorf("branch %q is not part of a stack", branch)
-	}
-
-	currentBranch, err := git.CurrentBranch()
-	if err != nil {
-		cfg.Errorf("failed to get current branch: %s", err)
-		return nil, fmt.Errorf("failed to get current branch: %w", err)
-	}
-
-	return &loadStackResult{
-		GitDir:        gitDir,
-		StackFile:     sf,
-		Stack:         s,
-		CurrentBranch: currentBranch,
-	}, nil
+	cfg.Errorf("failed to save stack state: %s", err)
+	return ErrSilent
 }
 
 // resolveStack finds the stack for the given branch, handling ambiguity when

@@ -45,13 +45,6 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 		return ErrNotInStack
 	}
 
-	lock, err := stack.Lock(gitDir)
-	if err != nil {
-		cfg.Errorf("another process is currently editing the stack — try again later")
-		return ErrLockFailed
-	}
-	defer lock.Unlock()
-
 	sf, err := stack.Load(gitDir)
 	if err != nil {
 		cfg.Errorf("failed to load stack state: %s", err)
@@ -187,8 +180,7 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 	syncStackPRs(cfg, s)
 
 	if err := stack.Save(gitDir, sf); err != nil {
-		cfg.Errorf("failed to save stack state: %s", err)
-		return ErrSilent
+		return handleSaveError(cfg, err)
 	}
 
 	cfg.Successf("Pushed and synced %d branches", len(s.ActiveBranches()))

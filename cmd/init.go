@@ -73,13 +73,6 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 	}
 
 	// Load existing stack file
-	lock, err := stack.Lock(gitDir)
-	if err != nil {
-		cfg.Errorf("another process is currently editing the stack — try again later")
-		return ErrLockFailed
-	}
-	defer lock.Unlock()
-
 	sf, err := stack.Load(gitDir)
 	if err != nil {
 		cfg.Errorf("failed to load stack state: %s", err)
@@ -334,7 +327,7 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 	syncStackPRs(cfg, &sf.Stacks[len(sf.Stacks)-1])
 
 	if err := stack.Save(gitDir, sf); err != nil {
-		return err
+		return handleSaveError(cfg, err)
 	}
 
 	// Print result

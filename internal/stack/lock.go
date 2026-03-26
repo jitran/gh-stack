@@ -9,10 +9,20 @@ import (
 
 const lockFileName = "gh-stack.lock"
 
+// LockError is returned when the stack file lock cannot be acquired.
+// Callers can check for this with errors.As to distinguish lock failures
+// from other errors.
+type LockError struct {
+	Err error
+}
+
+func (e *LockError) Error() string { return e.Err.Error() }
+func (e *LockError) Unwrap() error { return e.Err }
+
 // LockTimeout is how long Lock() will wait for the exclusive lock before
-// giving up.  This prevents processes (including AI agents) from hanging
-// indefinitely when another instance holds the lock.
-const LockTimeout = 30 * time.Second
+// giving up.  With the lock held only during file writes (milliseconds),
+// this timeout primarily guards against stuck or orphaned lock files.
+const LockTimeout = 5 * time.Second
 
 // lockRetryInterval is the sleep between non-blocking lock attempts.
 const lockRetryInterval = 100 * time.Millisecond
@@ -25,16 +35,10 @@ type FileLock struct {
 
 // Lock acquires an exclusive lock on the stack file in the given git directory.
 // It retries with a non-blocking attempt every 100ms for up to LockTimeout.
-// Callers must defer Unlock() to release the lock.
 //
-// Usage:
-//
-//	lock, err := stack.Lock(gitDir)
-//	if err != nil { ... }
-//	defer lock.Unlock()
-//	sf, err := stack.Load(gitDir)
-//	// ... modify sf ...
-//	stack.Save(gitDir, sf)
+// Most callers should not use Lock directly — stack.Save() acquires the lock
+// automatically.  Use Lock only when you need to hold the lock across multiple
+// operations (e.g. Load-Modify-Save as an atomic unit).
 func Lock(gitDir string) (*FileLock, error) {
 	path := filepath.Join(gitDir, lockFileName)
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0644)

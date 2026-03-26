@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/cli/go-gh/v2/pkg/prompter"
@@ -52,12 +51,8 @@ func runAdd(cfg *config.Config, opts *addOptions, args []string) error {
 
 	result, err := loadStack(cfg, "")
 	if err != nil {
-		if errors.Is(err, ErrLockFailed) {
-			return ErrLockFailed
-		}
 		return ErrNotInStack
 	}
-	defer result.Lock.Unlock()
 	gitDir := result.GitDir
 	sf := result.StackFile
 	s := result.Stack
@@ -205,8 +200,7 @@ func runAdd(cfg *config.Config, opts *addOptions, args []string) error {
 	}
 
 	if err := stack.Save(gitDir, sf); err != nil {
-		cfg.Errorf("failed to save stack state: %s", err)
-		return ErrSilent
+		return handleSaveError(cfg, err)
 	}
 
 	// Print summary

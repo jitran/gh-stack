@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"errors"
-
 	"github.com/github/gh-stack/internal/config"
 	"github.com/github/gh-stack/internal/stack"
 	"github.com/spf13/cobra"
@@ -37,12 +35,8 @@ func UnstackCmd(cfg *config.Config) *cobra.Command {
 func runUnstack(cfg *config.Config, opts *unstackOptions) error {
 	result, err := loadStack(cfg, opts.target)
 	if err != nil {
-		if errors.Is(err, ErrLockFailed) {
-			return ErrLockFailed
-		}
 		return ErrNotInStack
 	}
-	defer result.Lock.Unlock()
 	gitDir := result.GitDir
 	sf := result.StackFile
 	s := result.Stack
@@ -56,8 +50,7 @@ func runUnstack(cfg *config.Config, opts *unstackOptions) error {
 	// Remove from local tracking
 	sf.RemoveStackForBranch(target)
 	if err := stack.Save(gitDir, sf); err != nil {
-		cfg.Errorf("failed to save stack state: %s", err)
-		return ErrSilent
+		return handleSaveError(cfg, err)
 	}
 	cfg.Successf("Stack removed from local tracking")
 

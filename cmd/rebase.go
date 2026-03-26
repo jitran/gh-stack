@@ -84,12 +84,8 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 
 	result, err := loadStack(cfg, opts.branch)
 	if err != nil {
-		if errors.Is(err, ErrLockFailed) {
-			return ErrLockFailed
-		}
 		return ErrNotInStack
 	}
-	defer result.Lock.Unlock()
 	sf := result.StackFile
 	s := result.Stack
 	currentBranch := result.CurrentBranch
@@ -340,13 +336,6 @@ func continueRebase(cfg *config.Config, gitDir string) error {
 		cfg.Errorf("no rebase in progress")
 		return ErrSilent
 	}
-
-	lock, err := stack.Lock(gitDir)
-	if err != nil {
-		cfg.Errorf("another process is currently editing the stack — try again later")
-		return ErrLockFailed
-	}
-	defer lock.Unlock()
 
 	sf, err := stack.Load(gitDir)
 	if err != nil {

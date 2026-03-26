@@ -66,6 +66,7 @@ func TestLock_SerializesConcurrentAccess(t *testing.T) {
 	require.NoError(t, Save(dir, sf))
 
 	// Run 10 concurrent goroutines, each adding a stack under lock.
+	// Uses Lock + Load + SaveLocked for atomic read-modify-write.
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
@@ -80,7 +81,7 @@ func TestLock_SerializesConcurrentAccess(t *testing.T) {
 			require.NoError(t, err)
 
 			loaded.AddStack(makeStack("main", "branch"))
-			require.NoError(t, Save(dir, loaded))
+			require.NoError(t, SaveLocked(dir, loaded))
 		}(i)
 	}
 	wg.Wait()

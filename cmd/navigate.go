@@ -69,7 +69,7 @@ func BottomCmd(cfg *config.Config) *cobra.Command {
 }
 
 func runNavigate(cfg *config.Config, delta int) error {
-	result, err := loadStackReadOnly(cfg, "")
+	result, err := loadStack(cfg, "")
 	if err != nil {
 		return ErrNotInStack
 	}
@@ -183,7 +183,7 @@ func runNavigate(cfg *config.Config, delta int) error {
 }
 
 func runNavigateToEnd(cfg *config.Config, top bool) error {
-	result, err := loadStackReadOnly(cfg, "")
+	result, err := loadStack(cfg, "")
 	if err != nil {
 		return ErrNotInStack
 	}

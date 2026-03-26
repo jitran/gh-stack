@@ -47,12 +47,8 @@ conflicts interactively.`,
 func runSync(cfg *config.Config, opts *syncOptions) error {
 	result, err := loadStack(cfg, "")
 	if err != nil {
-		if errors.Is(err, ErrLockFailed) {
-			return ErrLockFailed
-		}
 		return ErrNotInStack
 	}
-	defer result.Lock.Unlock()
 	gitDir := result.GitDir
 	sf := result.StackFile
 	s := result.Stack
@@ -292,8 +288,7 @@ func runSync(cfg *config.Config, opts *syncOptions) error {
 	updateBaseSHAs(s)
 
 	if err := stack.Save(gitDir, sf); err != nil {
-		cfg.Errorf("failed to save stack state: %s", err)
-		return ErrSilent
+		return handleSaveError(cfg, err)
 	}
 
 	cfg.Printf("")

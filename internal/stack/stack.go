@@ -258,8 +258,25 @@ func Load(gitDir string) (*StackFile, error) {
 	return &sf, nil
 }
 
-// Save writes the stack file to the given git directory.
+// Save acquires an exclusive lock on the stack file, writes sf as JSON, and
+// releases the lock.  The lock is held only for the duration of the write.
 func Save(gitDir string, sf *StackFile) error {
+	lock, err := Lock(gitDir)
+	if err != nil {
+		return &LockError{Err: err}
+	}
+	defer lock.Unlock()
+	return writeStackFile(gitDir, sf)
+}
+
+// SaveLocked writes the stack file without acquiring the lock.  The caller
+// must already hold the lock (via Lock) to protect the write.  Use this when
+// you need an atomic Load-Modify-Save sequence.
+func SaveLocked(gitDir string, sf *StackFile) error {
+	return writeStackFile(gitDir, sf)
+}
+
+func writeStackFile(gitDir string, sf *StackFile) error {
 	sf.SchemaVersion = schemaVersion
 	if sf.Stacks == nil {
 		sf.Stacks = []Stack{}

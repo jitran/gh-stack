@@ -3,7 +3,6 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -44,18 +43,14 @@ func ViewCmd(cfg *config.Config) *cobra.Command {
 func runView(cfg *config.Config, opts *viewOptions) error {
 	result, err := loadStack(cfg, "")
 	if err != nil {
-		if errors.Is(err, ErrLockFailed) {
-			return ErrLockFailed
-		}
 		return ErrNotInStack
 	}
-	defer result.Lock.Unlock()
 	gitDir := result.GitDir
 	sf := result.StackFile
 	s := result.Stack
 	currentBranch := result.CurrentBranch
 
-	// Sync PR state
+	// Sync PR state and save (best-effort).
 	syncStackPRs(cfg, s)
 	_ = stack.Save(gitDir, sf)
 
