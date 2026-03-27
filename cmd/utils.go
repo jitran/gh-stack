@@ -138,12 +138,17 @@ func loadStack(cfg *config.Config, branch string) (*loadStackResult, error) {
 }
 
 // handleSaveError translates a stack.Save error into the appropriate user
-// message and exit error.  Lock contention returns ErrLockFailed (exit 8);
-// other write failures return ErrSilent (exit 1).
+// message and exit error.  Lock contention and stale-file detection both
+// return ErrLockFailed (exit 8); other write failures return ErrSilent (exit 1).
 func handleSaveError(cfg *config.Config, err error) error {
 	var lockErr *stack.LockError
 	if errors.As(err, &lockErr) {
 		cfg.Errorf("another process is currently editing the stack — try again later")
+		return ErrLockFailed
+	}
+	var staleErr *stack.StaleError
+	if errors.As(err, &staleErr) {
+		cfg.Errorf("stack file was modified by another process — please re-run the command")
 		return ErrLockFailed
 	}
 	cfg.Errorf("failed to save stack state: %s", err)

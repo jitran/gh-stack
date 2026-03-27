@@ -1,6 +1,7 @@
 package stack
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -77,7 +78,7 @@ func TestLock_SerializesConcurrentAccess(t *testing.T) {
 	require.NoError(t, Save(dir, sf))
 
 	// Run 10 concurrent goroutines, each adding a stack under lock.
-	// Uses Lock + Load + SaveLocked for atomic read-modify-write.
+	// Uses Lock + Load + writeStackFile for atomic read-modify-write.
 	errCh := make(chan error, 10)
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
@@ -99,8 +100,8 @@ func TestLock_SerializesConcurrentAccess(t *testing.T) {
 			}
 
 			loaded.AddStack(makeStack("main", "branch"))
-			if err := SaveLocked(dir, loaded); err != nil {
-				errCh <- fmt.Errorf("goroutine %d SaveLocked: %w", idx, err)
+			if err := writeStackFile(dir, loaded); err != nil {
+				errCh <- fmt.Errorf("goroutine %d writeStackFile: %w", idx, err)
 			}
 		}(i)
 	}
@@ -131,4 +132,113 @@ func TestLock_FileLeftOnDisk(t *testing.T) {
 	lock2, err := Lock(dir)
 	require.NoError(t, err, "should be able to re-lock after unlock")
 	lock2.Unlock()
+}
+
+func TestLock_TimesOut(t *testing.T) {
+	dir := t.TempDir()
+
+	// Hold the lock so the second attempt can never acquire it.
+	lock1, err := Lock(dir)
+	require.NoError(t, err)
+	defer lock1.Unlock()
+
+	// Save original timeout and set a short one for the test.
+	origTimeout := LockTimeout
+	LockTimeout = 200 * time.Millisecond
+	defer func() { LockTimeout = origTimeout }()
+
+	start := time.Now()
+	lock2, err := Lock(dir)
+	elapsed := time.Since(start)
+
+	assert.Nil(t, lock2, "should not acquire lock")
+	require.Error(t, err)
+
+	var lockErr *LockError
+	require.True(t, errors.As(err, &lockErr), "error should be *LockError, got %T", err)
+	assert.Contains(t, lockErr.Error(), "timed out")
+
+	// Should have waited roughly LockTimeout before giving up.
+	assert.GreaterOrEqual(t, elapsed, 150*time.Millisecond, "should wait near the timeout")
+}
+
+func TestSave_DetectsStaleFile(t *testing.T) {
+	dir := t.TempDir()
+
+	// Write an initial stack file.
+	sf := &StackFile{SchemaVersion: 1, Stacks: []Stack{}}
+	require.NoError(t, Save(dir, sf))
+
+	// Load — captures the on-disk checksum.
+	loaded, err := Load(dir)
+	require.NoError(t, err)
+
+	// Simulate another process: load, modify, save.
+	other, err := Load(dir)
+	require.NoError(t, err)
+	other.AddStack(makeStack("main", "sneaky"))
+	require.NoError(t, Save(dir, other))
+
+	// Our loaded copy tries to save — should detect staleness.
+	loaded.AddStack(makeStack("main", "my-branch"))
+	err = Save(dir, loaded)
+	require.Error(t, err)
+
+	var staleErr *StaleError
+	require.True(t, errors.As(err, &staleErr), "error should be *StaleError, got %T", err)
+	assert.Contains(t, staleErr.Error(), "modified by another process")
+}
+
+func TestSave_AllowsWriteWhenFileUnchanged(t *testing.T) {
+	dir := t.TempDir()
+
+	// Write, load, modify, save — no concurrent changes.
+	sf := &StackFile{SchemaVersion: 1, Stacks: []Stack{}}
+	require.NoError(t, Save(dir, sf))
+
+	loaded, err := Load(dir)
+	require.NoError(t, err)
+
+	loaded.AddStack(makeStack("main", "feature"))
+	require.NoError(t, Save(dir, loaded))
+
+	// Verify the write actually persisted.
+	final, err := Load(dir)
+	require.NoError(t, err)
+	assert.Len(t, final.Stacks, 1)
+}
+
+func TestSave_AllowsFirstWrite(t *testing.T) {
+	dir := t.TempDir()
+
+	// File doesn't exist — Load returns nil checksum, Save should succeed.
+	sf, err := Load(dir)
+	require.NoError(t, err)
+	assert.Empty(t, sf.Stacks)
+
+	sf.AddStack(makeStack("main", "first"))
+	require.NoError(t, Save(dir, sf), "first save to a new file should succeed")
+
+	final, err := Load(dir)
+	require.NoError(t, err)
+	assert.Len(t, final.Stacks, 1)
+}
+
+func TestSave_DoubleSaveSucceeds(t *testing.T) {
+	dir := t.TempDir()
+
+	sf, err := Load(dir)
+	require.NoError(t, err)
+
+	sf.AddStack(makeStack("main", "first"))
+	require.NoError(t, Save(dir, sf), "first save should succeed")
+
+	// A second Save on the same instance must not spuriously fail —
+	// writeStackFile refreshes loadChecksum after writing.
+	sf.AddStack(makeStack("main", "second"))
+	require.NoError(t, Save(dir, sf), "second save on same instance should succeed")
+
+	final, err := Load(dir)
+	require.NoError(t, err)
+	assert.Len(t, final.Stacks, 2)
 }

@@ -19,10 +19,20 @@ type LockError struct {
 func (e *LockError) Error() string { return e.Err.Error() }
 func (e *LockError) Unwrap() error { return e.Err }
 
+// StaleError is returned when the stack file was modified on disk since it
+// was loaded.  This indicates another process wrote to the file concurrently.
+// Callers can check for this with errors.As.
+type StaleError struct {
+	Err error
+}
+
+func (e *StaleError) Error() string { return e.Err.Error() }
+func (e *StaleError) Unwrap() error { return e.Err }
+
 // LockTimeout is how long Lock() will wait for the exclusive lock before
 // giving up.  With the lock held only during file writes (milliseconds),
 // this timeout primarily guards against a hung process holding the lock.
-const LockTimeout = 5 * time.Second
+var LockTimeout = 5 * time.Second
 
 // lockRetryInterval is the sleep between non-blocking lock attempts.
 const lockRetryInterval = 100 * time.Millisecond
