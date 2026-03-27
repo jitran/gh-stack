@@ -47,6 +47,9 @@ func RootCmd() *cobra.Command {
 	root.AddCommand(TopCmd(cfg))
 	root.AddCommand(BottomCmd(cfg))
 
+	// Alias
+	root.AddCommand(AliasCmd(cfg))
+
 	// Feedback
 	root.AddCommand(FeedbackCmd(cfg))
 
