@@ -19,6 +19,7 @@ You can create a stack using the `gh stack` CLI:
 
 ```sh
 gh stack init
+# ... make commits on the first branch ...
 gh stack add auth-layer
 # ... make commits ...
 gh stack add api-routes

@@ -10,9 +10,8 @@ This guide covers the most common workflows for day-to-day use of stacked PRs, f
 The basic flow: initialize a stack, add branches for each logical unit of work, commit, push, iterate on review feedback, and merge.
 
 ```sh
-# 1. Start a stack
+# 1. Start a stack (creates and checks out the first branch)
 gh stack init
-gh stack add auth-middleware
 
 # 2. Work on the first layer
 # ... write code, make commits ...

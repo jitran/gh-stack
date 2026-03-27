@@ -60,8 +60,9 @@ When you're ready to merge, you merge from the bottom up. Each PR can be merged 
 # Install the CLI extension
 gh extension install github/gh-stack
 
-# Create a stack, add branches, push PRs
+# Create a stack (creates and checks out the first branch)
 gh stack init
+# ... make commits ...
 gh stack add auth-layer
 # ... make commits ...
 gh stack add api-routes

@@ -23,12 +23,10 @@ npx skills add github/gh-stack
 ## Quick start
 
 ```sh
-# Start a new stack from the default branch
+# Start a new stack (creates and checks out the first branch)
 gh stack init
 
-# Create the first branch and start working
-gh stack add auth-layer
-# ... make commits ...
+# ... make commits on the first branch ...
 
 # Add another branch on top
 gh stack add api-endpoints
@@ -381,9 +379,8 @@ gh stack feedback "Support for reordering branches"
 ## Typical workflow
 
 ```sh
-# 1. Start a stack
+# 1. Start a stack (creates and checks out the first branch)
 gh stack init
-gh stack add auth-middleware
 
 # 2. Work on the first layer
 #    ... write code, make commits ...
