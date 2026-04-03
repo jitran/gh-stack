@@ -324,7 +324,7 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 	}
 
 	cfg.Printf("%s rebased locally with %s", rangeDesc, s.Trunk.Branch)
-	cfg.Printf("To push up your changes and open/update the stack of PRs, run `%s`",
+	cfg.Printf("To push up your changes, run `%s`",
 		cfg.ColorCyan("gh stack push"))
 
 	return nil
@@ -500,7 +500,7 @@ func continueRebase(cfg *config.Config, gitDir string) error {
 
 	cfg.Printf("All branches in stack rebased locally with %s", s.Trunk.Branch)
 	cfg.Printf("To push up your changes and open/update the stack of PRs, run `%s`",
-		cfg.ColorCyan("gh stack push"))
+		cfg.ColorCyan("gh stack submit"))
 
 	return nil
 }

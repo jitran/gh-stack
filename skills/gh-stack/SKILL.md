@@ -127,10 +127,10 @@ Small, incidental fixes (e.g., fixing a typo you noticed) can go in the current 
 | Set custom trunk | `gh stack init --base develop branch-a` |
 | Add a branch to stack (suffix only if prefix set) | `gh stack add api-routes` |
 | Add branch + stage all + commit | `gh stack add -Am "message" api-routes` |
-| Push + create PRs | `gh stack push --auto` |
-| Push as drafts | `gh stack push --auto --draft` |
-| Push without creating PRs | `gh stack push --skip-prs` |
-| Push to specific remote | `gh stack push --auto --remote origin` |
+| Push branches to remote | `gh stack push` |
+| Push to specific remote | `gh stack push --remote origin` |
+| Push branches + create PRs | `gh stack submit --auto` |
+| Create PRs as drafts | `gh stack submit --auto --draft` |
 | Sync (fetch, rebase, push) | `gh stack sync` |
 | Sync with specific remote | `gh stack sync --remote origin` |
 | Rebase entire stack | `gh stack rebase` |
@@ -142,7 +142,6 @@ Small, incidental fixes (e.g., fixing a typo you noticed) can go in the current 
 | Switch to top/bottom branch | `gh stack top` / `gh stack bottom` |
 | Check out by PR | `gh stack checkout 42` |
 | Check out by branch | `gh stack checkout feature-auth` |
-| Remove stack | `gh stack unstack --local` |
 
 ---
 
@@ -214,7 +213,7 @@ git commit -m "Add frontend dashboard"
 # ── Stack complete: feat/auth → feat/api-routes → feat/frontend ──
 
 # 7. Push everything and create draft PRs
-gh stack push --auto --draft
+gh stack submit --auto --draft
 
 # 8. Verify the stack
 gh stack view --json
@@ -278,7 +277,7 @@ git commit -m "Fix auth token validation"
 gh stack rebase --upstack
 
 # 4. Push the updated stack
-gh stack push --auto
+gh stack push
 ```
 
 ### Routine sync after merges
@@ -355,12 +354,6 @@ echo "$output" | jq -r '.currentBranch'
 
 # Check if the stack is fully merged (all branches merged)
 echo "$output" | jq '[.branches[] | .isMerged] | all'
-```
-
-### Clean up after all PRs are merged
-
-```bash
-gh stack unstack --local
 ```
 
 ---
@@ -459,36 +452,64 @@ gh stack add -um "Fix auth bug" auth-fix
 
 ---
 
-### Push branches and create PRs — `gh stack push`
+### Push branches to remote — `gh stack push`
 
-Push all stack branches and create/update PRs.
+Push all stack branches to the remote.
 
 ```
 gh stack push [flags]
 ```
 
 ```bash
-# Push and auto-title new PRs
-gh stack push --auto
+# Push all branches
+gh stack push
 
-# Push and create PRs as drafts
-gh stack push --auto --draft
+# Push to specific remote
+gh stack push --remote upstream
+```
 
-# Push branches only, no PR creation
-gh stack push --skip-prs
+| Flag | Description |
+|------|-------------|
+| `--remote <name>` | Remote to push to (use if multiple remotes exist) |
+
+**Behavior:**
+
+- Pushes all active (non-merged) branches atomically (`--force-with-lease --atomic`)
+- Does **not** create or update pull requests — use `gh stack submit` for that
+
+**Output (stderr):**
+
+- `Pushed N branches` summary
+
+---
+
+### Submit branches and create PRs — `gh stack submit`
+
+Push all stack branches and create PRs on GitHub.
+
+```
+gh stack submit [flags]
+```
+
+```bash
+# Submit and auto-title new PRs
+gh stack submit --auto
+
+# Submit and create PRs as drafts
+gh stack submit --auto --draft
 ```
 
 | Flag | Description |
 |------|-------------|
 | `--auto` | Auto-generate PR titles without prompting |
 | `--draft` | Create new PRs as drafts |
-| `--skip-prs` | Push branches without creating or updating PRs |
 | `--remote <name>` | Remote to push to (use if multiple remotes exist) |
 
 **Behavior:**
 
 - Pushes all active (non-merged) branches atomically (`--force-with-lease --atomic`)
 - Creates a new PR for each branch that doesn't have one (base set to the first non-merged ancestor branch)
+- After creating PRs, links them together as a **Stack** on GitHub (requires the repository to have stacks enabled)
 - Syncs PR metadata for branches that already have PRs
 
 **PR title auto-generation (`--auto`):**
@@ -688,30 +709,6 @@ Resolves the target against locally tracked stacks. Accepts a PR number, PR URL,
 
 ---
 
-### Remove a stack — `gh stack unstack`
-
-Remove a stack from local tracking. Use `--local` to avoid warnings about unsupported server-side deletion.
-
-```
-gh stack unstack [branch] [flags]
-```
-
-```bash
-# Remove from local tracking
-gh stack unstack --local
-
-# Specify a branch to identify which stack
-gh stack unstack feature-auth --local
-```
-
-| Flag | Description |
-|------|-------------|
-| `--local` | Only delete the stack locally (recommended) |
-
-| Argument | Description |
-|----------|-------------|
-| `[branch]` | A branch in the stack (defaults to the current branch) |
-
 ---
 
 ## Output conventions
@@ -740,6 +737,5 @@ gh stack unstack feature-auth --local
 2. **Stack disambiguation cannot be bypassed.** If the current branch is the trunk of multiple stacks, commands error with code 6. Check out a non-shared branch first.
 3. **Multiple remotes require `--remote` or config.** If more than one remote is configured, pass `--remote <name>` or set `remote.pushDefault` in git config before running `push`, `sync`, or `rebase`.
 4. **Merging PRs:** Merging Stacked PRs from the CLI is not supported yet. Direct users to open the PR URL in a browser to merge PRs.
-5. **Server-side stack deletion is not supported.** Use `unstack --local`.
-6. **Server-side stack discovery is not supported.** `checkout` only works with locally tracked stacks.
-7. **PR title and body are auto-generated.** There is no flag to set a custom PR title or body during `push`. The title and body are generated from commit messages plus a footer. Use `gh pr edit` to modify PR title and body after creation.
+5. **Server-side stack discovery is not supported.** `checkout` only works with locally tracked stacks.
+6. **PR title and body are auto-generated.** There is no flag to set a custom PR title or body during `submit`. The title and body are generated from commit messages plus a footer. Use `gh pr edit` to modify PR title and body after creation.

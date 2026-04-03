@@ -1,6 +1,8 @@
 package github
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 
 	"github.com/cli/go-gh/v2/pkg/api"
@@ -202,6 +204,21 @@ func (c *Client) CreatePR(base, head, title, body string, draft bool) (*PullRequ
 	}, nil
 }
 
+// UpdatePRBase updates the base branch of an existing pull request.
+func (c *Client) UpdatePRBase(number int, base string) error {
+	type updatePRRequest struct {
+		Base string `json:"base"`
+	}
+
+	body, err := json.Marshal(updatePRRequest{Base: base})
+	if err != nil {
+		return fmt.Errorf("marshaling request: %w", err)
+	}
+
+	path := fmt.Sprintf("repos/%s/%s/pulls/%d", c.owner, c.repo, number)
+	return c.rest.Patch(path, bytes.NewReader(body), nil)
+}
+
 // PRDetails holds enriched pull request data for display in the TUI.
 type PRDetails struct {
 	Number        int
@@ -264,10 +281,53 @@ func (c *Client) FindPRDetailsForBranch(branch string) (*PRDetails, error) {
 	}, nil
 }
 
-// DeleteStack deletes a stack on GitHub.
-// TODO: Implement once the stack API is available.
-func (c *Client) DeleteStack() error {
-	return fmt.Errorf("deleting a stack on GitHub is not yet supported by the API")
+// CreateStack creates a stack on GitHub from an ordered list of PR numbers.
+// The PR numbers must be ordered from bottom to top of the stack and must
+// form a valid base-to-head chain. Returns the server-assigned stack ID.
+func (c *Client) CreateStack(prNumbers []int) (int, error) {
+	type createStackRequest struct {
+		PullRequestNumbers []int `json:"pull_request_numbers"`
+	}
+
+	body, err := json.Marshal(createStackRequest{PullRequestNumbers: prNumbers})
+	if err != nil {
+		return 0, fmt.Errorf("marshaling request: %w", err)
+	}
+
+	path := fmt.Sprintf("repos/%s/%s/cli_internal/pulls/stacks", c.owner, c.repo)
+
+	var response struct {
+		ID int `json:"id"`
+	}
+
+	if err := c.rest.Post(path, bytes.NewReader(body), &response); err != nil {
+		return 0, err
+	}
+
+	return response.ID, nil
+}
+
+// UpdateStack adds pull requests to an existing stack on GitHub.
+// The stack is identified by stackID. The full list of PR numbers in the
+// updated stack must be provided, including existing and new PRs, ordered
+// from bottom to top.
+func (c *Client) UpdateStack(stackID string, prNumbers []int) error {
+	type updateStackRequest struct {
+		PullRequestNumbers []int `json:"pull_request_numbers"`
+	}
+
+	body, err := json.Marshal(updateStackRequest{PullRequestNumbers: prNumbers})
+	if err != nil {
+		return fmt.Errorf("marshaling request: %w", err)
+	}
+
+	path := fmt.Sprintf("repos/%s/%s/cli_internal/pulls/stacks/%s", c.owner, c.repo, stackID)
+
+	var response struct {
+		ID int `json:"id"`
+	}
+
+	return c.rest.Put(path, bytes.NewReader(body), &response)
 }
 
 func (c *Client) repositoryID() (string, error) {

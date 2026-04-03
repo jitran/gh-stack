@@ -43,7 +43,7 @@ func TestMerge_NoPullRequest(t *testing.T) {
 
 	assert.ErrorIs(t, err, ErrSilent)
 	assert.Contains(t, output, "no pull request found")
-	assert.Contains(t, output, "gh stack push")
+	assert.Contains(t, output, "gh stack submit")
 }
 
 func TestMerge_AlreadyMerged(t *testing.T) {

@@ -8,7 +8,9 @@ type ClientOps interface {
 	FindAnyPRForBranch(branch string) (*PullRequest, error)
 	FindPRDetailsForBranch(branch string) (*PRDetails, error)
 	CreatePR(base, head, title, body string, draft bool) (*PullRequest, error)
-	DeleteStack() error
+	UpdatePRBase(number int, base string) error
+	CreateStack(prNumbers []int) (int, error)
+	UpdateStack(stackID string, prNumbers []int) error
 }
 
 // Compile-time check that Client satisfies ClientOps.
