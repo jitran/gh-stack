@@ -1,7 +1,5 @@
 package github
 
-import "fmt"
-
 // MockClient is a test double for GitHub API operations.
 // Each field is an optional function that, when set, handles the corresponding
 // ClientOps method call. When nil, a reasonable default is returned.
@@ -12,7 +10,6 @@ type MockClient struct {
 	CreatePRFn      func(string, string, string, string, bool) (*PullRequest, error)
 	CreateStackFn   func([]int) (int, error)
 	UpdateStackFn   func(string, []int) error
-	DeleteStackFn   func() error
 }
 
 // Compile-time check that MockClient satisfies ClientOps.
@@ -44,13 +41,6 @@ func (m *MockClient) CreatePR(base, head, title, body string, draft bool) (*Pull
 		return m.CreatePRFn(base, head, title, body, draft)
 	}
 	return nil, nil
-}
-
-func (m *MockClient) DeleteStack() error {
-	if m.DeleteStackFn != nil {
-		return m.DeleteStackFn()
-	}
-	return fmt.Errorf("deleting a stack on GitHub is not yet supported by the API")
 }
 
 func (m *MockClient) CreateStack(prNumbers []int) (int, error) {

@@ -142,7 +142,6 @@ Small, incidental fixes (e.g., fixing a typo you noticed) can go in the current 
 | Switch to top/bottom branch | `gh stack top` / `gh stack bottom` |
 | Check out by PR | `gh stack checkout 42` |
 | Check out by branch | `gh stack checkout feature-auth` |
-| Remove stack | `gh stack unstack --local` |
 
 ---
 
@@ -355,12 +354,6 @@ echo "$output" | jq -r '.currentBranch'
 
 # Check if the stack is fully merged (all branches merged)
 echo "$output" | jq '[.branches[] | .isMerged] | all'
-```
-
-### Clean up after all PRs are merged
-
-```bash
-gh stack unstack --local
 ```
 
 ---
@@ -716,30 +709,6 @@ Resolves the target against locally tracked stacks. Accepts a PR number, PR URL,
 
 ---
 
-### Remove a stack — `gh stack unstack`
-
-Remove a stack from local tracking. Use `--local` to avoid warnings about unsupported server-side deletion.
-
-```
-gh stack unstack [branch] [flags]
-```
-
-```bash
-# Remove from local tracking
-gh stack unstack --local
-
-# Specify a branch to identify which stack
-gh stack unstack feature-auth --local
-```
-
-| Flag | Description |
-|------|-------------|
-| `--local` | Only delete the stack locally (recommended) |
-
-| Argument | Description |
-|----------|-------------|
-| `[branch]` | A branch in the stack (defaults to the current branch) |
-
 ---
 
 ## Output conventions
@@ -768,6 +737,5 @@ gh stack unstack feature-auth --local
 2. **Stack disambiguation cannot be bypassed.** If the current branch is the trunk of multiple stacks, commands error with code 6. Check out a non-shared branch first.
 3. **Multiple remotes require `--remote` or config.** If more than one remote is configured, pass `--remote <name>` or set `remote.pushDefault` in git config before running `push`, `sync`, or `rebase`.
 4. **Merging PRs:** Merging Stacked PRs from the CLI is not supported yet. Direct users to open the PR URL in a browser to merge PRs.
-5. **Server-side stack deletion is not supported.** Use `unstack --local`.
-6. **Server-side stack discovery is not supported.** `checkout` only works with locally tracked stacks.
-7. **PR title and body are auto-generated.** There is no flag to set a custom PR title or body during `submit`. The title and body are generated from commit messages plus a footer. Use `gh pr edit` to modify PR title and body after creation.
+5. **Server-side stack discovery is not supported.** `checkout` only works with locally tracked stacks.
+6. **PR title and body are auto-generated.** There is no flag to set a custom PR title or body during `submit`. The title and body are generated from commit messages plus a footer. Use `gh pr edit` to modify PR title and body after creation.

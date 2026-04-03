@@ -10,7 +10,6 @@ type ClientOps interface {
 	CreatePR(base, head, title, body string, draft bool) (*PullRequest, error)
 	CreateStack(prNumbers []int) (int, error)
 	UpdateStack(stackID string, prNumbers []int) error
-	DeleteStack() error
 }
 
 // Compile-time check that Client satisfies ClientOps.

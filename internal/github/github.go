@@ -266,12 +266,6 @@ func (c *Client) FindPRDetailsForBranch(branch string) (*PRDetails, error) {
 	}, nil
 }
 
-// DeleteStack deletes a stack on GitHub.
-// TODO: Implement once the stack API is available.
-func (c *Client) DeleteStack() error {
-	return fmt.Errorf("deleting a stack on GitHub is not yet supported by the API")
-}
-
 // CreateStack creates a stack on GitHub from an ordered list of PR numbers.
 // The PR numbers must be ordered from bottom to top of the stack and must
 // form a valid base-to-head chain. Returns the server-assigned stack ID.

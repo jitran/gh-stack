@@ -35,7 +35,6 @@ func RootCmd() *cobra.Command {
 	root.AddCommand(PushCmd(cfg))
 	root.AddCommand(SubmitCmd(cfg))
 	root.AddCommand(SyncCmd(cfg))
-	root.AddCommand(UnstackCmd(cfg))
 	root.AddCommand(MergeCmd(cfg))
 
 	// Helper commands
