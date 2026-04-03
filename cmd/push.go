@@ -76,6 +76,10 @@ func runPush(cfg *config.Config, opts *pushOptions) error {
 		cfg.Printf("Skipping %d merged %s", len(merged), plural(len(merged), "branch", "branches"))
 	}
 	activeBranches := activeBranchNames(s)
+	if len(activeBranches) == 0 {
+		cfg.Printf("No active branches to push (all merged)")
+		return nil
+	}
 	cfg.Printf("Pushing %d %s to %s...", len(activeBranches), plural(len(activeBranches), "branch", "branches"), remote)
 	if err := git.Push(remote, activeBranches, true, true); err != nil {
 		cfg.Errorf("failed to push: %s", err)

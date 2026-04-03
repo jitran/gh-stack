@@ -90,6 +90,10 @@ func runSubmit(cfg *config.Config, opts *submitOptions) error {
 		cfg.Printf("Skipping %d merged %s", len(merged), plural(len(merged), "branch", "branches"))
 	}
 	activeBranches := activeBranchNames(s)
+	if len(activeBranches) == 0 {
+		cfg.Printf("All branches are merged, nothing to submit")
+		return nil
+	}
 	cfg.Printf("Pushing %d %s to %s...", len(activeBranches), plural(len(activeBranches), "branch", "branches"), remote)
 	if err := git.Push(remote, activeBranches, true, true); err != nil {
 		cfg.Errorf("failed to push: %s", err)
@@ -304,14 +308,14 @@ func handleCreate422(cfg *config.Config, httpErr *api.HTTPError) {
 	msg := httpErr.Message
 
 	if strings.Contains(msg, "already stacked") {
-		cfg.Errorf("One or more PRs are already part of an existing stack on GitHub")
+		cfg.Warningf("One or more PRs are already part of an existing stack on GitHub")
 		cfg.Printf("  To fix this, unstack the PRs from the web, then `%s`",
 			cfg.ColorCyan("gh stack submit"))
 		return
 	}
 
 	if strings.Contains(msg, "must form a stack") {
-		cfg.Errorf("Cannot create stack: %s", msg)
+		cfg.Warningf("Cannot create stack: %s", msg)
 		cfg.Printf("  Each PR's base branch must match the previous PR's head branch.")
 		return
 	}

@@ -283,7 +283,7 @@ Push all branches and create/update PRs and the stack on GitHub.
 gh stack submit [flags]
 ```
 
-Creates a Stacked PR for every branch in the stack, pushing branches to remote if needed.
+Creates a Stacked PR for every branch in the stack, pushing branches to the remote.
 
 After creating PRs, `submit` automatically creates a **Stack** on GitHub to link the PRs together. If the stack already exists on GitHub (e.g., from a previous submit), new PRs will be added to the top of the stack.
 
