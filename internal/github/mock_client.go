@@ -7,9 +7,10 @@ type MockClient struct {
 	FindPRForBranchFn        func(string) (*PullRequest, error)
 	FindAnyPRForBranchFn     func(string) (*PullRequest, error)
 	FindPRDetailsForBranchFn func(string) (*PRDetails, error)
-	CreatePRFn      func(string, string, string, string, bool) (*PullRequest, error)
-	CreateStackFn   func([]int) (int, error)
-	UpdateStackFn   func(string, []int) error
+	CreatePRFn               func(string, string, string, string, bool) (*PullRequest, error)
+	UpdatePRBaseFn           func(int, string) error
+	CreateStackFn            func([]int) (int, error)
+	UpdateStackFn            func(string, []int) error
 }
 
 // Compile-time check that MockClient satisfies ClientOps.
@@ -41,6 +42,13 @@ func (m *MockClient) CreatePR(base, head, title, body string, draft bool) (*Pull
 		return m.CreatePRFn(base, head, title, body, draft)
 	}
 	return nil, nil
+}
+
+func (m *MockClient) UpdatePRBase(number int, base string) error {
+	if m.UpdatePRBaseFn != nil {
+		return m.UpdatePRBaseFn(number, base)
+	}
+	return nil
 }
 
 func (m *MockClient) CreateStack(prNumbers []int) (int, error) {

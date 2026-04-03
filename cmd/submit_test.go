@@ -397,7 +397,8 @@ func TestSyncStack_ExistingStack_Update404(t *testing.T) {
 	assert.Contains(t, output, "Stack created on GitHub with 2 PRs")
 }
 
-func TestSyncStack_AlreadyStacked_422(t *testing.T) {
+func TestSyncStack_AlreadyStacked_OurStack(t *testing.T) {
+	// All our PRs are listed as "already stacked" — this is our stack, show up-to-date.
 	s := &stack.Stack{
 		Trunk: stack.BranchRef{Branch: "main"},
 		Branches: []stack.BranchRef{
@@ -423,7 +424,40 @@ func TestSyncStack_AlreadyStacked_422(t *testing.T) {
 	errOut, _ := io.ReadAll(errR)
 	output := string(errOut)
 
-	assert.Contains(t, output, "already part of an existing stack")
+	assert.Contains(t, output, "Stack with 2 PRs is up to date")
+	assert.NotContains(t, output, "different stack")
+}
+
+func TestSyncStack_AlreadyStacked_DifferentStack(t *testing.T) {
+	// Only a subset of our PRs are listed — they're in a different stack.
+	s := &stack.Stack{
+		Trunk: stack.BranchRef{Branch: "main"},
+		Branches: []stack.BranchRef{
+			{Branch: "b1", PullRequest: &stack.PullRequestRef{Number: 10}},
+			{Branch: "b2", PullRequest: &stack.PullRequestRef{Number: 11}},
+			{Branch: "b3", PullRequest: &stack.PullRequestRef{Number: 12}},
+		},
+	}
+
+	mock := &github.MockClient{
+		CreateStackFn: func([]int) (int, error) {
+			return 0, &api.HTTPError{
+				StatusCode: 422,
+				Message:    "Pull requests #10, #11 are already stacked",
+				RequestURL: &url.URL{Path: "/repos/o/r/cli_internal/pulls/stacks"},
+			}
+		},
+	}
+
+	cfg, _, errR := config.NewTestConfig()
+	syncStack(cfg, mock, s)
+
+	cfg.Err.Close()
+	errOut, _ := io.ReadAll(errR)
+	output := string(errOut)
+
+	assert.Contains(t, output, "different stack")
+	assert.NotContains(t, output, "up to date")
 }
 
 func TestSyncStack_InvalidChain_422(t *testing.T) {
@@ -544,7 +578,7 @@ func TestSyncStack_SkipsBranchesWithoutPR(t *testing.T) {
 		Trunk: stack.BranchRef{Branch: "main"},
 		Branches: []stack.BranchRef{
 			{Branch: "b1", PullRequest: &stack.PullRequestRef{Number: 10}},
-			{Branch: "b2"}, // no PR yet
+			{Branch: "b2"}, // no PR — skipped
 			{Branch: "b3", PullRequest: &stack.PullRequestRef{Number: 12}},
 		},
 	}
@@ -562,4 +596,236 @@ func TestSyncStack_SkipsBranchesWithoutPR(t *testing.T) {
 	cfg.Err.Close()
 
 	assert.Equal(t, []int{10, 12}, gotNumbers, "should skip branches without PRs")
+}
+
+func TestSubmit_UpdatesBaseBranch(t *testing.T) {
+	// b1's PR has base "main" but it should be "main" (correct).
+	// b2's PR has base "main" but it should be "b1" (wrong — needs update).
+	s := stack.Stack{
+		Trunk: stack.BranchRef{Branch: "main"},
+		Branches: []stack.BranchRef{
+			{Branch: "b1", PullRequest: &stack.PullRequestRef{Number: 10}},
+			{Branch: "b2", PullRequest: &stack.PullRequestRef{Number: 11}},
+		},
+	}
+
+	tmpDir := t.TempDir()
+	writeStackFile(t, tmpDir, s)
+
+	mock := newSubmitMock(tmpDir, "b1")
+
+	restore := git.SetOps(mock)
+	defer restore()
+
+	var updatedPRs []struct {
+		number int
+		base   string
+	}
+
+	cfg, _, errR := config.NewTestConfig()
+	cfg.GitHubClientOverride = &github.MockClient{
+		FindPRForBranchFn: func(branch string) (*github.PullRequest, error) {
+			switch branch {
+			case "b1":
+				return &github.PullRequest{
+					Number: 10, ID: "PR_10",
+					URL:         "https://github.com/owner/repo/pull/10",
+					BaseRefName: "main", HeadRefName: "b1",
+				}, nil
+			case "b2":
+				return &github.PullRequest{
+					Number: 11, ID: "PR_11",
+					URL:         "https://github.com/owner/repo/pull/11",
+					BaseRefName: "main", HeadRefName: "b2", // wrong base
+				}, nil
+			}
+			return nil, nil
+		},
+		UpdatePRBaseFn: func(number int, base string) error {
+			updatedPRs = append(updatedPRs, struct {
+				number int
+				base   string
+			}{number, base})
+			return nil
+		},
+		CreateStackFn: func(prNumbers []int) (int, error) {
+			return 42, nil
+		},
+	}
+
+	cmd := SubmitCmd(cfg)
+	cmd.SetArgs([]string{"--auto"})
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	err := cmd.Execute()
+
+	cfg.Err.Close()
+	errOut, _ := io.ReadAll(errR)
+	output := string(errOut)
+
+	assert.NoError(t, err)
+	// b1's base is "main" which is correct — no update.
+	// b2's base is "main" but should be "b1" — should be updated.
+	require.Len(t, updatedPRs, 1)
+	assert.Equal(t, 11, updatedPRs[0].number)
+	assert.Equal(t, "b1", updatedPRs[0].base)
+	assert.Contains(t, output, "Updated base branch for PR")
+}
+
+func TestSubmit_SkipsBaseUpdateWhenStacked(t *testing.T) {
+	// Stack already exists (s.ID is set), so base updates should be skipped.
+	s := stack.Stack{
+		ID:    "99",
+		Trunk: stack.BranchRef{Branch: "main"},
+		Branches: []stack.BranchRef{
+			{Branch: "b1", PullRequest: &stack.PullRequestRef{Number: 10}},
+			{Branch: "b2", PullRequest: &stack.PullRequestRef{Number: 11}},
+		},
+	}
+
+	tmpDir := t.TempDir()
+	writeStackFile(t, tmpDir, s)
+
+	mock := newSubmitMock(tmpDir, "b1")
+
+	restore := git.SetOps(mock)
+	defer restore()
+
+	updateCalled := false
+	cfg, _, errR := config.NewTestConfig()
+	cfg.GitHubClientOverride = &github.MockClient{
+		FindPRForBranchFn: func(branch string) (*github.PullRequest, error) {
+			switch branch {
+			case "b1":
+				return &github.PullRequest{
+					Number: 10, ID: "PR_10",
+					URL:         "https://github.com/owner/repo/pull/10",
+					BaseRefName: "main", HeadRefName: "b1",
+				}, nil
+			case "b2":
+				return &github.PullRequest{
+					Number: 11, ID: "PR_11",
+					URL:         "https://github.com/owner/repo/pull/11",
+					BaseRefName: "main", HeadRefName: "b2", // wrong base
+				}, nil
+			}
+			return nil, nil
+		},
+		UpdatePRBaseFn: func(number int, base string) error {
+			updateCalled = true
+			return nil
+		},
+		UpdateStackFn: func(stackID string, prNumbers []int) error {
+			return nil
+		},
+	}
+
+	cmd := SubmitCmd(cfg)
+	cmd.SetArgs([]string{"--auto"})
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	err := cmd.Execute()
+
+	cfg.Err.Close()
+	errOut, _ := io.ReadAll(errR)
+	output := string(errOut)
+
+	assert.NoError(t, err)
+	assert.False(t, updateCalled, "should not call UpdatePRBase when stack exists")
+	assert.Contains(t, output, "cannot update while stacked")
+}
+
+func TestSubmit_CreatesMissingPRsAndUpdatesExisting(t *testing.T) {
+	// b1 has a PR, b2 does not, b3 has a PR with wrong base.
+	// Submit should create b2's PR and fix b3's base.
+	s := stack.Stack{
+		Trunk: stack.BranchRef{Branch: "main"},
+		Branches: []stack.BranchRef{
+			{Branch: "b1", PullRequest: &stack.PullRequestRef{Number: 10}},
+			{Branch: "b2"},
+			{Branch: "b3", PullRequest: &stack.PullRequestRef{Number: 12}},
+		},
+	}
+
+	tmpDir := t.TempDir()
+	writeStackFile(t, tmpDir, s)
+
+	mock := newSubmitMock(tmpDir, "b1")
+	mock.LogRangeFn = func(base, head string) ([]git.CommitInfo, error) {
+		return []git.CommitInfo{{Subject: "commit for " + head}}, nil
+	}
+
+	restore := git.SetOps(mock)
+	defer restore()
+
+	var createdPRs []string
+	var updatedBases []struct {
+		number int
+		base   string
+	}
+
+	cfg, _, errR := config.NewTestConfig()
+	cfg.GitHubClientOverride = &github.MockClient{
+		FindPRForBranchFn: func(branch string) (*github.PullRequest, error) {
+			switch branch {
+			case "b1":
+				return &github.PullRequest{
+					Number: 10, ID: "PR_10",
+					URL:         "https://github.com/owner/repo/pull/10",
+					BaseRefName: "main", HeadRefName: "b1",
+				}, nil
+			case "b2":
+				return nil, nil // no PR
+			case "b3":
+				return &github.PullRequest{
+					Number: 12, ID: "PR_12",
+					URL:         "https://github.com/owner/repo/pull/12",
+					BaseRefName: "main", HeadRefName: "b3", // wrong base — should be b2
+				}, nil
+			}
+			return nil, nil
+		},
+		CreatePRFn: func(base, head, title, body string, draft bool) (*github.PullRequest, error) {
+			createdPRs = append(createdPRs, head)
+			return &github.PullRequest{
+				Number: 11, ID: "PR_11",
+				URL: "https://github.com/owner/repo/pull/11",
+			}, nil
+		},
+		UpdatePRBaseFn: func(number int, base string) error {
+			updatedBases = append(updatedBases, struct {
+				number int
+				base   string
+			}{number, base})
+			return nil
+		},
+		CreateStackFn: func(prNumbers []int) (int, error) {
+			return 42, nil
+		},
+	}
+
+	cmd := SubmitCmd(cfg)
+	cmd.SetArgs([]string{"--auto"})
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	err := cmd.Execute()
+
+	cfg.Err.Close()
+	errOut, _ := io.ReadAll(errR)
+	output := string(errOut)
+
+	assert.NoError(t, err)
+
+	// b2 should have been created
+	assert.Equal(t, []string{"b2"}, createdPRs)
+	assert.Contains(t, output, "Created PR")
+
+	// b3's base should have been updated from "main" to "b2"
+	require.Len(t, updatedBases, 1)
+	assert.Equal(t, 12, updatedBases[0].number)
+	assert.Equal(t, "b2", updatedBases[0].base)
+	assert.Contains(t, output, "Updated base branch for PR")
+
+	// Stack should be created with all 3 PRs
+	assert.Contains(t, output, "Stack created on GitHub with 3 PRs")
 }

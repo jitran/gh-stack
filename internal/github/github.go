@@ -204,6 +204,21 @@ func (c *Client) CreatePR(base, head, title, body string, draft bool) (*PullRequ
 	}, nil
 }
 
+// UpdatePRBase updates the base branch of an existing pull request.
+func (c *Client) UpdatePRBase(number int, base string) error {
+	type updatePRRequest struct {
+		Base string `json:"base"`
+	}
+
+	body, err := json.Marshal(updatePRRequest{Base: base})
+	if err != nil {
+		return fmt.Errorf("marshaling request: %w", err)
+	}
+
+	path := fmt.Sprintf("repos/%s/%s/pulls/%d", c.owner, c.repo, number)
+	return c.rest.Patch(path, bytes.NewReader(body), nil)
+}
+
 // PRDetails holds enriched pull request data for display in the TUI.
 type PRDetails struct {
 	Number        int
