@@ -351,7 +351,7 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 	}
 
 	cfg.Printf("To add a new layer to your stack, run `%s`", cfg.ColorCyan("gh stack add"))
-	cfg.Printf("When you're ready to push to GitHub and open a stack of PRs, run `%s`", cfg.ColorCyan("gh stack push"))
+	cfg.Printf("When you're ready to push to GitHub and open a stack of PRs, run `%s`", cfg.ColorCyan("gh stack submit"))
 
 	return nil
 }

@@ -34,11 +34,14 @@ gh stack add auth-layer
 gh stack add api-endpoints
 # ... make commits ...
 
-# Push all branches and create/update PRs
+# Push all branches
 gh stack push
 
 # View the stack
 gh stack view
+
+# Open a stack of PRs
+gh stack submit
 ```
 
 ## How it works
@@ -253,15 +256,36 @@ gh stack sync
 
 ### `gh stack push`
 
-Push all branches in the current stack and create or update pull requests.
+Push all branches in the current stack to the remote.
 
 ```
 gh stack push [flags]
 ```
 
-Pushes every branch to the remote, then for each branch either creates a new PR (with the correct base branch) or updates the base of an existing PR if it has changed. Uses `--force-with-lease` by default to safely update rebased branches.
+Pushes every branch to the remote using `--force-with-lease --atomic`. This is a lightweight wrapper around `git push` that knows about all branches in the stack. It does not create or update pull requests — use `gh stack submit` for that.
 
-After creating PRs, `push` automatically creates a **Stack** on GitHub to link the PRs together. If the stack already exists on GitHub (e.g., from a previous push), it is left as-is — updating existing stacks will be supported in an upcoming release.
+| Flag | Description |
+|------|-------------|
+| `--remote <name>` | Remote to push to (defaults to auto-detected remote) |
+
+**Examples:**
+
+```sh
+gh stack push
+gh stack push --remote upstream
+```
+
+### `gh stack submit`
+
+Push all branches and create/update PRs and the stack on GitHub.
+
+```
+gh stack submit [flags]
+```
+
+Creates a Stacked PR for every branch in the stack, pushing branches to remote if needed.
+
+After creating PRs, `submit` automatically creates a **Stack** on GitHub to link the PRs together. If the stack already exists on GitHub (e.g., from a previous submit), new PRs will be added to the top of the stack.
 
 When creating new PRs, you will be prompted to enter a title for each one. Press Enter to accept the default (branch name), or use `--auto` to skip prompting entirely.
 
@@ -269,16 +293,14 @@ When creating new PRs, you will be prompted to enter a title for each one. Press
 |------|-------------|
 | `--auto` | Use auto-generated PR titles without prompting |
 | `--draft` | Create new PRs as drafts |
-| `--skip-prs` | Push branches without creating or updating PRs |
 | `--remote <name>` | Remote to push to (defaults to auto-detected remote) |
 
 **Examples:**
 
 ```sh
-gh stack push
-gh stack push --auto
-gh stack push --draft
-gh stack push --skip-prs
+gh stack submit
+gh stack submit --auto
+gh stack submit --draft
 ```
 
 ### `gh stack view`
@@ -401,8 +423,8 @@ gh stack add auth-middleware
 gh stack add api-routes
 #    ... write code, make commits ...
 
-# 4. Push everything and create PRs
-gh stack push
+# 4. Push everything and create Stacked PRs
+gh stack submit
 
 # 5. Reviewer requests changes on the first PR
 gh stack bottom
@@ -411,7 +433,7 @@ gh stack bottom
 # 6. Rebase the rest of the stack on top of your fix
 gh stack rebase
 
-# 7. Push the updated stack
+# 7. Push the updated branches
 gh stack push
 
 # 8. When the first PR is merged, sync the stack
@@ -452,7 +474,7 @@ gh stack add -Am "Frontend components"
 #    → feat/02 already has commits, creates feat/03 and commits there
 
 # 7. Push everything and create PRs
-gh stack push
+gh stack submit
 ```
 
 Compared to the typical workflow, there's no need to name branches, run `git add`, or run `git commit` separately. Each `gh stack add -Am "..."` does it all.
