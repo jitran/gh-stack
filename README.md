@@ -489,3 +489,17 @@ Compared to the typical workflow, there's no need to name branches, run `git add
 | 6 | Disambiguation required (branch belongs to multiple stacks) |
 | 7 | Rebase already in progress |
 | 8 | Stack is locked by another process |
+
+## License 
+
+This project is licensed under the terms of the MIT open source license. Please refer to the [LICENSE](LICENSE) file for the full terms.
+
+## Maintainers 
+
+See [CODEOWNERS](CODEOWNERS)
+
+## Support
+
+See [SUPPORT.md](SUPPORT.md)
+
+Please note that the Stacked PRs feature is currently in private preview and **gh-stack** will not work without that feature enabled.
