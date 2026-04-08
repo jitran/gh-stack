@@ -18,10 +18,11 @@ func UnstackCmd(cfg *config.Config) *cobra.Command {
 	opts := &unstackOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "unstack [branch]",
-		Short: "Delete a stack locally and on GitHub",
-		Long:  "Remove a stack from local tracking and delete it on GitHub. Use --local to only remove local tracking.",
-		Args:  cobra.MaximumNArgs(1),
+		Use:     "unstack [branch]",
+		Aliases: []string{"delete"},
+		Short:   "Delete a stack locally and on GitHub",
+		Long:    "Remove a stack from local tracking and delete it on GitHub. Use --local to only remove local tracking.",
+		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				opts.target = args[0]

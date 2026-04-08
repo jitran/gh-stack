@@ -277,7 +277,7 @@ gh stack push --remote upstream
 
 ### `gh stack unstack`
 
-Remove a stack from local tracking and delete it on GitHub.
+Remove a stack from local tracking and delete it on GitHub. Also available as `gh stack delete`.
 
 ```sh
 gh stack unstack [flags] [branch]

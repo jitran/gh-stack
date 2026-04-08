@@ -48,7 +48,7 @@ gh stack init --adopt branch-2 branch-1 branch-3
 
 ### How do I delete my stack?
 
-**From the CLI** — Run `gh stack unstack` to delete the stack on GitHub and remove local tracking. Use `--local` to only remove local tracking.
+**From the CLI** — Run `gh stack unstack` (or `gh stack delete`) to delete the stack on GitHub and remove local tracking. Use `--local` to only remove local tracking.
 
 **From the UI** — You can unstack PRs from the GitHub UI — see [Unstacking](/gh-stack/guides/ui/#unstacking) for a walkthrough. This dissolves the association between PRs, turning them back into standard independent PRs.
 
