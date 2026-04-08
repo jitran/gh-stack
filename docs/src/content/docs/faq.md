@@ -33,11 +33,24 @@ You can also add PRs to an existing stack from the GitHub UI. See [Adding to an 
 
 ### How can I modify my stack?
 
-Reordering or inserting branches into the middle of a stack is not currently supported. To restructure a stack, you need to delete it and recreate it with the desired order.
+Reordering or inserting branches into the middle of a stack is not currently supported. To restructure a stack, use `gh stack unstack` to tear it down and then recreate it with `gh stack init --adopt`:
+
+```sh
+# 1. Remove the stack
+gh stack unstack
+
+# 2. Make structural changes (reorder, rename, delete branches)
+git branch -m old-name new-name
+
+# 3. Re-create the stack with the new structure
+gh stack init --adopt branch-2 branch-1 branch-3
+```
 
 ### How do I delete my stack?
 
-You can unstack PRs from the GitHub UI — see [Unstacking](/gh-stack/guides/ui/#unstacking) for a walkthrough. This dissolves the association between PRs, turning them back into standard independent PRs. CLI support for unstacking is coming soon.
+**From the CLI** — Run `gh stack unstack` (or `gh stack delete`) to delete the stack on GitHub and remove local tracking. Use `--local` to only remove local tracking.
+
+**From the UI** — You can unstack PRs from the GitHub UI — see [Unstacking](/gh-stack/guides/ui/#unstacking) for a walkthrough. This dissolves the association between PRs, turning them back into standard independent PRs.
 
 ### Can stacks be created across forks?
 
