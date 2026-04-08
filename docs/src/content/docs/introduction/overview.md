@@ -88,6 +88,7 @@ While the PR UI provides the review and merge experience, the `gh stack` CLI han
 - **Creating PRs** — `gh stack submit` pushes branches and creates or updates PRs, linking them as a Stack on GitHub.
 - **Navigating the stack** — `gh stack up`, `down`, `top`, and `bottom` let you move between layers without remembering branch names.
 - **Syncing everything** — `gh stack sync` fetches, rebases, pushes, and updates PR state in one command.
+- **Tearing down stacks** — `gh stack unstack` removes a stack from GitHub and local tracking if you need to restructure it.
 
 The CLI is not required to use Stacked PRs — the underlying git operations are standard. But it makes the workflow dramatically simpler.
 

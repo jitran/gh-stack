@@ -163,6 +163,27 @@ Create a new branch (`gh stack add`) when you're starting a **different concern*
 
 All branches in a stack should be part of the same feature or project. If you need to work on something unrelated, start a separate stack with `gh stack init` or switch to an existing one with `gh stack checkout`.
 
+## Restructuring a Stack
+
+When you need to remove a branch, reorder branches, or rename branches, tear down the stack and rebuild it:
+
+```sh
+# 1. Remove the stack on GitHub and locally
+gh stack unstack
+
+# 2. Make structural changes
+git branch -m old-branch-1 new-branch-1  # rename a branch
+git branch -D branch-3                   # delete a branch
+
+# 3. Re-create the stack with the new order
+gh stack init --adopt new-branch-1 branch-2 branch-4
+
+# 4. Push and sync the new stack
+gh stack submit
+```
+
+The `unstack` command deletes the stack on GitHub first, then removes local tracking. Your branches and PRs are not affected — only the stack relationship is removed. After `init --adopt`, any existing open PRs are automatically re-associated with the new stack.
+
 ## Using AI Agents with Stacks
 
 AI coding agents (like GitHub Copilot) can create and manage Stacked PRs on your behalf. Install the gh-stack skill to give them the context they need:
