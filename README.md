@@ -23,12 +23,10 @@ npx skills add github/gh-stack
 ## Quick start
 
 ```sh
-# Start a new stack from the default branch
+# Start a new stack (creates and checks out the first branch)
 gh stack init
 
-# Create the first branch and start working
-gh stack add auth-layer
-# ... make commits ...
+# ... make commits on the first branch ...
 
 # Add another branch on top
 gh stack add api-endpoints
@@ -224,7 +222,7 @@ gh stack rebase --upstack
 # After resolving a conflict
 gh stack rebase --continue
 
-# Give up and restore everything
+# Abort rebase and restore everything
 gh stack rebase --abort
 ```
 
@@ -378,12 +376,42 @@ gh stack feedback
 gh stack feedback "Support for reordering branches"
 ```
 
+### `gh stack alias`
+
+Create a short command alias so you can type less.
+
+```
+gh stack alias [name] [flags]
+```
+
+Installs a small wrapper script into `~/.local/bin/` that forwards all arguments to `gh stack`. The default alias name is `gs`, but you can choose any name by passing it as an argument. After setup, you can run `gs push` instead of `gh stack push`.
+
+On Windows, automatic alias creation is not supported — the command prints manual instructions for creating a batch file or PowerShell function.
+
+| Flag | Description |
+|------|-------------|
+| `--remove` | Remove a previously created alias |
+
+**Examples:**
+
+```sh
+# Create the default alias (gs)
+gh stack alias
+#    → now "gs push", "gs view", etc. all work
+
+# Create a custom alias
+gh stack alias gst
+
+# Remove an alias
+gh stack alias --remove
+gh stack alias gst --remove
+```
+
 ## Typical workflow
 
 ```sh
-# 1. Start a stack
+# 1. Start a stack (creates and checks out the first branch)
 gh stack init
-gh stack add auth-middleware
 
 # 2. Work on the first layer
 #    ... write code, make commits ...
@@ -461,3 +489,17 @@ Compared to the typical workflow, there's no need to name branches, run `git add
 | 6 | Disambiguation required (branch belongs to multiple stacks) |
 | 7 | Rebase already in progress |
 | 8 | Stack is locked by another process |
+
+## License 
+
+This project is licensed under the terms of the MIT open source license. Please refer to the [LICENSE](LICENSE) file for the full terms.
+
+## Maintainers 
+
+See [CODEOWNERS](CODEOWNERS)
+
+## Support
+
+See [SUPPORT.md](SUPPORT.md)
+
+Please note that the Stacked PRs feature is currently in private preview and **gh-stack** will not work without that feature enabled.
