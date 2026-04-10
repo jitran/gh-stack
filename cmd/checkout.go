@@ -361,6 +361,7 @@ func handleCompositionConflict(
 	selected, err := p.Select("How would you like to resolve this?", "", options)
 	if err != nil {
 		if isInterruptError(err) {
+			clearSelectPrompt(cfg, len(options))
 			printInterrupt(cfg)
 			return nil, errInterrupt
 		}
@@ -551,6 +552,7 @@ func interactiveStackPicker(cfg *config.Config, sf *stack.StackFile) (*stack.Sta
 	)
 	if err != nil {
 		if isInterruptError(err) {
+			clearSelectPrompt(cfg, len(options))
 			printInterrupt(cfg)
 			return nil, errInterrupt
 		}
