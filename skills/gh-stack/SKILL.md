@@ -381,7 +381,7 @@ gh stack init --base main --adopt new-branch-1 new-branch-2 new-branch-3
 Creates a new stack. Provide branch names as positional arguments.
 
 ```
-gh stack init [branches...] [flags]
+gh stack init [flags] [branches...]
 ```
 
 ```bash
@@ -424,7 +424,7 @@ gh stack init --adopt branch-a branch-b branch-c
 Add a new branch on top of the current stack. Must be run while on the topmost branch (or the trunk if the stack has no branches yet). Always provide an explicit branch name.
 
 ```
-gh stack add [branch] [flags]
+gh stack add [flags] [branch]
 ```
 
 **Recommended workflow — create the branch, then use standard git:**
@@ -578,7 +578,7 @@ gh stack sync [flags]
 Pull from remote and cascade-rebase stack branches. Use this when `sync` reports a conflict or when you need finer control (e.g., rebase only part of the stack).
 
 ```
-gh stack rebase [branch] [flags]
+gh stack rebase [flags] [branch]
 ```
 
 ```bash
@@ -730,7 +730,7 @@ When a branch name is provided, the command resolves it against locally tracked 
 Tear down a stack so you can restructure it — remove a branch, reorder branches, rename branches, or make other large changes. After unstacking, use `gh stack init` to re-create the stack with the desired structure.
 
 ```
-gh stack unstack [branch] [flags]
+gh stack unstack [flags] [branch]
 ```
 
 ```bash

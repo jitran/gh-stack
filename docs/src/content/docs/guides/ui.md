@@ -75,7 +75,7 @@ Before a PR in the stack can be merged, the following conditions must be met:
 - **The stack must be fully rebased** with a linear history
 - **The current PR itself** must meet all branch protection requirements for the stack base
 
-![Merge box showing failing stack requirements](../../../assets/screenshots/merge-box-failing-stack-requirements.png)
+![Merge box for a stacked pull request](../../../assets/screenshots/stack-merge-box.png)
 
 ## Unstacking
 

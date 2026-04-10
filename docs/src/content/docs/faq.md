@@ -158,7 +158,7 @@ Yes, you can continue to use your tool of choice (e.g. jj, Sapling, ghstack, git
 
 Stacked PRs on GitHub are based on the standard pull request model — any tool that creates PRs with the correct base branches can work with them. The `gh stack` CLI is purpose-built for the GitHub experience, but other tools that manage branch chains should be compatible.
 
-You can also use the GitHub CLI in conjunction with other tools to simply create a stack of PRs:
+You can also use the GitHub CLI in conjunction with other tools to open your PRs as a stack:
 
 ```bash
 # Create a stack of branches locally using jj
