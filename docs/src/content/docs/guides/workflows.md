@@ -135,7 +135,7 @@ This command:
 4. Pushes the updated branches
 5. Syncs PR state from GitHub
 
-If a conflict is detected during the rebase, all branches are restored to their original state and you're advised to run `gh stack rebase` to resolve conflicts interactively.
+If a conflict is detected during the rebase, all branches are restored to their original state, and you're advised to run `gh stack rebase` to resolve conflicts interactively.
 
 ## Structuring Your Stack
 

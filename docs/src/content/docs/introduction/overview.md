@@ -91,7 +91,7 @@ While the PR UI provides the review and merge experience, the `gh stack` CLI han
 - **Tearing down stacks** — `gh stack unstack` removes a stack from GitHub and local tracking if you need to restructure it.
 - **Checking out a stack** — `gh stack checkout <pr-number>` pulls down a stack, with all its branches, from GitHub to your local machine.
 
-The CLI is not required to use Stacked PRs — the underlying git operations are standard. But it makes the workflow simpler, and you can create Stacked PRs from CLI instead of the UI.
+The CLI is not required to use Stacked PRs — the underlying git operations are standard. But it makes the workflow simpler, and you can create Stacked PRs from the CLI instead of the UI.
 
 ## Thinking About Stack Structure
 
