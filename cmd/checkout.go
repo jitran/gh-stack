@@ -92,7 +92,7 @@ func runCheckout(cfg *config.Config, opts *checkoutOptions) error {
 	} else {
 		// Non-numeric target — resolve against local stacks only
 		var br *stack.BranchRef
-		s, br, err = resolvePR(sf, opts.target)
+		s, br, err = resolvePR(cfg, sf, opts.target)
 		if err != nil {
 			cfg.Errorf("%s", err)
 			return ErrNotInStack
@@ -461,7 +461,9 @@ func importRemoteStack(
 		}
 	}
 
-	// Create local branches for each PR's head branch
+	// Create local branches for each PR's head branch.
+	// Skip merged PRs whose branches were deleted from the remote —
+	// these no longer exist upstream and can't be created locally.
 	for _, pr := range prs {
 		branch := pr.HeadRefName
 		if git.BranchExists(branch) {
@@ -469,6 +471,10 @@ func importRemoteStack(
 		}
 		remoteRef := remote + "/" + branch
 		if err := git.CreateBranch(branch, remoteRef); err != nil {
+			if pr.Merged {
+				cfg.Infof("Skipping merged branch %s", branch)
+				continue
+			}
 			cfg.Errorf("failed to pull branch %s from %s: %v", branch, remoteRef, err)
 			return nil, ErrSilent
 		}
