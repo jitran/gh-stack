@@ -77,6 +77,7 @@ Rebasing is the trickiest part of working with Stacked PRs, and GitHub handles i
 - **In the PR UI** — A rebase button lets you trigger a cascading rebase across all branches in the stack.
 - **From the CLI** — `gh stack rebase` performs the same cascading rebase locally.
 - **After partial merges** — When you merge a PR at the bottom of the stack, the remaining branches are automatically rebased so the next PR targets `main` and is ready for review and merge.
+- **Safe squash-merge handling** — Squash merges are fully supported. The rebase engine safely replays your unique commits on top of the squashed base, avoiding artificial merge conflicts. See the [FAQ](/gh-stack/faq/#how-does-squash-merge-work) for a detailed description of how this works.
 
 ## The CLI: `gh stack`
 
@@ -92,6 +93,8 @@ While the PR UI provides the review and merge experience, the `gh stack` CLI han
 - **Checking out a stack** — `gh stack checkout <pr-number>` pulls down a stack, with all its branches, from GitHub to your local machine.
 
 The CLI is not required to use Stacked PRs — the underlying git operations are standard. But it makes the workflow simpler, and you can create Stacked PRs from the CLI instead of the UI.
+
+**Bring Your Own Tools:** You don't need to use the `gh stack` CLI for your local workflow. If you use tools like Jujutsu, Sapling, or custom tools to manage and push your local branches, you can then use the CLI or the GitHub UI to open a stack of PRs from those branches. See the [FAQ](/gh-stack/faq/#will-this-work-with-a-different-tool-for-stacking) for examples.
 
 ## Thinking About Stack Structure
 
