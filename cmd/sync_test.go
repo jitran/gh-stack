@@ -848,7 +848,7 @@ func TestSync_MergedBranchDeletedFromRemote(t *testing.T) {
 	s := stack.Stack{
 		Trunk: stack.BranchRef{Branch: "main"},
 		Branches: []stack.BranchRef{
-			{Branch: "b1", PullRequest: &stack.PullRequestRef{Number: 1, Merged: true}},
+			{Branch: "b1", Head: "b1-stored-head-sha", PullRequest: &stack.PullRequestRef{Number: 1, Merged: true}},
 			{Branch: "b2"},
 		},
 	}
@@ -915,7 +915,10 @@ func TestSync_MergedBranchDeletedFromRemote(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, output, "Skipping b1")
 
-	// Only b2 should be rebased
+	// Only b2 should be rebased, and the rebase should use b1's stored
+	// Head SHA as oldBase so `git rebase --onto` receives valid arguments.
 	require.Len(t, rebaseOntoCalls, 1)
 	assert.Equal(t, "b2", rebaseOntoCalls[0].branch)
+	assert.Equal(t, "main", rebaseOntoCalls[0].newBase)
+	assert.Equal(t, "b1-stored-head-sha", rebaseOntoCalls[0].oldBase)
 }
