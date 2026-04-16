@@ -142,6 +142,20 @@ func runSync(cfg *config.Config, opts *syncOptions) error {
 		}
 		originalRefs, _ := git.RevParseMap(branchNames)
 
+		// Backfill originalRefs for merged branches that were deleted locally.
+		// The rebase loop uses originalRefs[br.Branch] as ontoOldBase; without
+		// a valid entry the subsequent --onto rebase would receive an empty ref.
+		for _, b := range s.Branches {
+			if b.IsMerged() && !git.BranchExists(b.Branch) {
+				if b.Head != "" {
+					if originalRefs == nil {
+						originalRefs = make(map[string]string)
+					}
+					originalRefs[b.Branch] = b.Head
+				}
+			}
+		}
+
 		needsOnto := false
 		var ontoOldBase string
 

@@ -1044,11 +1044,12 @@ func TestRebase_BranchDiverged_NoFF(t *testing.T) {
 
 func TestRebase_SkipsMergedBranchesNotExistingLocally(t *testing.T) {
 	// Simulates a stack where b1 is merged and its branch was auto-deleted
-	// from the remote, so it doesn't exist locally.
+	// from the remote, so it doesn't exist locally. The stored Head SHA is
+	// used as ontoOldBase for the next branch's --onto rebase.
 	s := stack.Stack{
 		Trunk: stack.BranchRef{Branch: "main"},
 		Branches: []stack.BranchRef{
-			{Branch: "b1", PullRequest: &stack.PullRequestRef{Number: 42, Merged: true}},
+			{Branch: "b1", Head: "b1-stored-head-sha", PullRequest: &stack.PullRequestRef{Number: 42, Merged: true}},
 			{Branch: "b2"},
 		},
 	}
@@ -1095,7 +1096,10 @@ func TestRebase_SkipsMergedBranchesNotExistingLocally(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, output, "Skipping b1")
 
-	// Only b2 should be rebased
+	// Only b2 should be rebased, and the rebase should use b1's stored
+	// Head SHA as oldBase so `git rebase --onto` receives valid arguments.
 	require.Len(t, rebaseCalls, 1)
 	assert.Equal(t, "b2", rebaseCalls[0].branch)
+	assert.Equal(t, "main", rebaseCalls[0].newBase)
+	assert.Equal(t, "b1-stored-head-sha", rebaseCalls[0].oldBase)
 }

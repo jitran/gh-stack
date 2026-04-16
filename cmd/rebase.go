@@ -188,6 +188,17 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 		return ErrSilent
 	}
 
+	// Backfill originalRefs for merged branches that were deleted locally.
+	// The rebase loop uses originalRefs[br.Branch] as ontoOldBase; without
+	// a valid entry the subsequent --onto rebase would receive an empty ref.
+	for _, b := range s.Branches {
+		if b.IsMerged() && !git.BranchExists(b.Branch) {
+			if b.Head != "" {
+				originalRefs[b.Branch] = b.Head
+			}
+		}
+	}
+
 	// Track --onto rebase state for merged branches.
 	needsOnto := false
 	var ontoOldBase string
