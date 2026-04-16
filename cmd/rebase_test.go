@@ -240,6 +240,85 @@ func TestRebase_OntoPropagatesToSubsequentBranches(t *testing.T) {
 		"b4 should rebase --onto b3 with b3's original SHA as oldBase")
 }
 
+// TestRebase_StaleOntoOldBase_FallsBackToMergeBase verifies that when a branch
+// was already rebased past the merged branch's tip (e.g. by a previous run),
+// the stale ontoOldBase is detected via IsAncestor and replaced with
+// merge-base(newBase, branch) to avoid replaying already-applied commits.
+func TestRebase_StaleOntoOldBase_FallsBackToMergeBase(t *testing.T) {
+	s := stack.Stack{
+		Trunk: stack.BranchRef{Branch: "main"},
+		Branches: []stack.BranchRef{
+			{Branch: "b1", PullRequest: &stack.PullRequestRef{Number: 10, Merged: true}},
+			{Branch: "b2"},
+			{Branch: "b3"},
+		},
+	}
+
+	tmpDir := t.TempDir()
+	writeStackFile(t, tmpDir, s)
+
+	var rebaseCalls []rebaseCall
+
+	// b1's local ref is the stale pre-squash tip from before a previous rebase.
+	// b2 was already rebased onto main by a previous run, so b1's old tip
+	// is NOT an ancestor of b2.
+	branchSHAs := map[string]string{
+		"main": "main-sha",
+		"b1":   "b1-stale-presquash-sha",
+		"b2":   "b2-on-main-sha",
+		"b3":   "b3-on-b2-sha",
+	}
+
+	mock := newRebaseMock(tmpDir, "b2")
+	mock.BranchExistsFn = func(name string) bool { return true }
+	mock.RevParseFn = func(ref string) (string, error) {
+		if sha, ok := branchSHAs[ref]; ok {
+			return sha, nil
+		}
+		return "default-sha", nil
+	}
+	mock.IsAncestorFn = func(ancestor, descendant string) (bool, error) {
+		// b1's stale SHA is NOT an ancestor of b2 (b2 was already rebased onto main)
+		if ancestor == "b1-stale-presquash-sha" {
+			return false, nil
+		}
+		return true, nil
+	}
+	mock.MergeBaseFn = func(a, b string) (string, error) {
+		if a == "main" && b == "b2" {
+			return "main-b2-mergebase", nil
+		}
+		return "default-mergebase", nil
+	}
+	mock.RebaseOntoFn = func(newBase, oldBase, branch string) error {
+		rebaseCalls = append(rebaseCalls, rebaseCall{newBase, oldBase, branch})
+		return nil
+	}
+
+	restore := git.SetOps(mock)
+	defer restore()
+
+	cfg, _, _ := config.NewTestConfig()
+	cmd := RebaseCmd(cfg)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	err := cmd.Execute()
+
+	cfg.Out.Close()
+	cfg.Err.Close()
+
+	assert.NoError(t, err)
+	require.Len(t, rebaseCalls, 2)
+
+	// b2: stale ontoOldBase detected → falls back to merge-base(main, b2)
+	assert.Equal(t, rebaseCall{"main", "main-b2-mergebase", "b2"}, rebaseCalls[0],
+		"b2 should use merge-base as oldBase when ontoOldBase is stale")
+
+	// b3: b2's SHA is a valid ancestor → uses it directly
+	assert.Equal(t, rebaseCall{"b2", "b2-on-main-sha", "b3"}, rebaseCalls[1],
+		"b3 should use b2's original SHA as oldBase (not stale)")
+}
+
 // TestRebase_ConflictSavesState verifies that when a rebase conflict occurs,
 // the state is saved with the conflict branch and remaining branches.
 func TestRebase_ConflictSavesState(t *testing.T) {
