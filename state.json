@@ -1,7 +1,7 @@
 {
-  "last_run": "2026-04-17T07:44:58Z",
-  "workflow_run_id": "24553918140",
-  "monthly_summary_issue": null,
+  "last_run": "2026-04-17T14:04:48Z",
+  "workflow_run_id": "24569173417",
+  "monthly_summary_issue": 8,
   "issue_cursor": null,
   "comments_made": {},
   "pr_attempts": {
@@ -18,13 +18,26 @@
       "status": "open"
     },
     "batch-pr-fetch": {
-      "branch": "repo-assist/perf-batch-pr-fetch-2026-04-17",
+      "branch": "repo-assist/perf-batch-pr-fetch-2026-04-17-a223092d2e6d4237",
       "description": "Batch PR fetch in syncStackPRs: N+1 GraphQL calls to 1",
+      "pr_number": 7,
+      "status": "open"
+    },
+    "add-dependabot": {
+      "branch": "repo-assist/eng-add-dependabot-2026-04-17",
+      "description": "Add Dependabot config for Go modules and GitHub Actions",
       "pr_number": null,
       "status": "patch-pending",
-      "note": "Branch committed locally, PR creation returned patch file (permissions may be blocked). Branch not pushed to origin."
+      "note": "PR creation returned patch file (permissions). Branch committed locally."
+    },
+    "fix-needsrebase-queued": {
+      "branch": "repo-assist/improve-needsrebase-queued-2026-04-17",
+      "description": "Fix needsRebase=true incorrectly set for queued branches in JSON output",
+      "pr_number": null,
+      "status": "patch-pending",
+      "note": "PR creation returned patch file (permissions). Branch committed locally."
     }
   },
   "closed_issues": [3, 5],
-  "notes": "Issue #5 (monthly summary) closed by jitran. New monthly summary created this run. PR #4 (draft PR status) and PR #6 (queued color) both open for review. Batch PR fetch perf improvement committed locally but PR not created (permissions issue). Issue #2 is a workaround issue for failed PR creation - should be closed now that PR #4 exists. Monthly summary issue number not yet known (created this run)."
+  "notes": "Monthly summary is issue #8. PRs #4, #6, #7 open for review. Issue #2 (stale workaround) should be closed once PR #4 is merged. Two new branches created this run for dependabot config and needsRebase fix — PRs blocked by permissions. Enabling Actions PR creation in Settings would unblock future PR creation."
 }
