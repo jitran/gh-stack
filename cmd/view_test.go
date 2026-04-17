@@ -311,20 +311,19 @@ func TestViewShort_QueuedStack(t *testing.T) {
 	// Mock GitHub client to return b1 as queued (MergeQueueEntry set)
 	cfg, outR, _ := config.NewTestConfig()
 	cfg.GitHubClientOverride = &github.MockClient{
-		FindAnyPRForBranchFn: func(branch string) (*github.PullRequest, error) {
-			switch branch {
-			case "b1":
-				return &github.PullRequest{
-					Number:          1,
-					ID:              "PR_1",
-					MergeQueueEntry: &github.MergeQueueEntry{ID: "MQE_1"},
-				}, nil
-			case "b2":
-				return &github.PullRequest{Number: 2, ID: "PR_2"}, nil
-			case "b3":
-				return &github.PullRequest{Number: 3, ID: "PR_3"}, nil
+		FindPRsForBranchesFn: func(branches []string) (map[string]*github.PullRequest, error) {
+			prs := map[string]*github.PullRequest{
+				"b1": {Number: 1, ID: "PR_1", MergeQueueEntry: &github.MergeQueueEntry{ID: "MQE_1"}},
+				"b2": {Number: 2, ID: "PR_2"},
+				"b3": {Number: 3, ID: "PR_3"},
 			}
-			return nil, nil
+			result := make(map[string]*github.PullRequest)
+			for _, b := range branches {
+				if pr, ok := prs[b]; ok {
+					result[b] = pr
+				}
+			}
+			return result, nil
 		},
 	}
 
@@ -372,18 +371,18 @@ func TestViewShort_MixedQueuedAndMerged(t *testing.T) {
 	// b1 is merged (persisted), b2 is queued (from API)
 	cfg, outR, _ := config.NewTestConfig()
 	cfg.GitHubClientOverride = &github.MockClient{
-		FindAnyPRForBranchFn: func(branch string) (*github.PullRequest, error) {
-			switch branch {
-			case "b2":
-				return &github.PullRequest{
-					Number:          2,
-					ID:              "PR_2",
-					MergeQueueEntry: &github.MergeQueueEntry{ID: "MQE_2"},
-				}, nil
-			case "b3":
-				return &github.PullRequest{Number: 3, ID: "PR_3"}, nil
+		FindPRsForBranchesFn: func(branches []string) (map[string]*github.PullRequest, error) {
+			prs := map[string]*github.PullRequest{
+				"b2": {Number: 2, ID: "PR_2", MergeQueueEntry: &github.MergeQueueEntry{ID: "MQE_2"}},
+				"b3": {Number: 3, ID: "PR_3"},
 			}
-			return nil, nil
+			result := make(map[string]*github.PullRequest)
+			for _, b := range branches {
+				if pr, ok := prs[b]; ok {
+					result[b] = pr
+				}
+			}
+			return result, nil
 		},
 	}
 

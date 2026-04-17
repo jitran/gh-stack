@@ -9,6 +9,7 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/github/gh-stack/internal/config"
 	"github.com/github/gh-stack/internal/git"
+	"github.com/github/gh-stack/internal/github"
 	"github.com/github/gh-stack/internal/stack"
 	"github.com/stretchr/testify/assert"
 )
@@ -270,4 +271,50 @@ func TestParsePRURL(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSyncStackPRs_BatchesBranches(t *testing.T) {
+	// syncStackPRs should call FindPRsForBranches once with all non-merged
+	// branch names, not once per branch.
+	s := &stack.Stack{
+		Trunk: stack.BranchRef{Branch: "main"},
+		Branches: []stack.BranchRef{
+			{Branch: "feat-1", PullRequest: &stack.PullRequestRef{Number: 1, Merged: true}},
+			{Branch: "feat-2"},
+			{Branch: "feat-3"},
+		},
+	}
+
+	callCount := 0
+	var capturedBranches []string
+
+	cfg, _, _ := config.NewTestConfig()
+	cfg.GitHubClientOverride = &github.MockClient{
+		FindPRsForBranchesFn: func(branches []string) (map[string]*github.PullRequest, error) {
+			callCount++
+			capturedBranches = branches
+			return map[string]*github.PullRequest{
+				"feat-2": {Number: 2, ID: "PR_2", URL: "https://github.com/o/r/pull/2"},
+				"feat-3": {
+					Number:          3,
+					ID:              "PR_3",
+					URL:             "https://github.com/o/r/pull/3",
+					MergeQueueEntry: &github.MergeQueueEntry{ID: "MQE_3"},
+				},
+			}, nil
+		},
+	}
+
+	syncStackPRs(cfg, s)
+
+	assert.Equal(t, 1, callCount, "should make exactly one batch API call")
+	assert.ElementsMatch(t, []string{"feat-2", "feat-3"}, capturedBranches, "should skip merged branches")
+
+	assert.NotNil(t, s.Branches[1].PullRequest)
+	assert.Equal(t, 2, s.Branches[1].PullRequest.Number)
+	assert.False(t, s.Branches[1].Queued)
+
+	assert.NotNil(t, s.Branches[2].PullRequest)
+	assert.Equal(t, 3, s.Branches[2].PullRequest.Number)
+	assert.True(t, s.Branches[2].Queued)
 }
