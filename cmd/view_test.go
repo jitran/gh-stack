@@ -206,6 +206,63 @@ func TestViewJSON_BranchFields(t *testing.T) {
 	assert.Equal(t, "OPEN", b1.PR.State)
 }
 
+// TestViewJSON_QueuedBranchNeedsRebaseFalse verifies that queued branches
+// never report needsRebase=true, even when git IsAncestor says they diverge.
+// A branch in the merge queue cannot be rebased, so the field would mislead
+// automation scripts.
+func TestViewJSON_QueuedBranchNeedsRebaseFalse(t *testing.T) {
+	git.SetOps(&git.MockOps{
+		IsAncestorFn: func(ancestor, descendant string) (bool, error) {
+			// Simulate divergent history for every branch — would normally
+			// trigger needsRebase=true.
+			return false, nil
+		},
+	})
+
+	s := &stack.Stack{
+		Trunk: stack.BranchRef{Branch: "main", Head: "aaa"},
+		Branches: []stack.BranchRef{
+			{
+				Branch:      "feat/01",
+				Head:        "bbb",
+				Base:        "aaa",
+				PullRequest: &stack.PullRequestRef{Number: 10, URL: "https://github.com/o/r/pull/10"},
+				// Queued flag is transient — set directly for the test.
+				Queued: true,
+			},
+			{
+				Branch:      "feat/02",
+				Head:        "ccc",
+				Base:        "bbb",
+				PullRequest: &stack.PullRequestRef{Number: 11, URL: "https://github.com/o/r/pull/11"},
+			},
+		},
+	}
+
+	cfg, outR, _ := config.NewTestConfig()
+	defer outR.Close()
+
+	err := viewJSON(cfg, s, "feat/02")
+	require.NoError(t, err)
+	cfg.Out.Close()
+
+	raw, err := io.ReadAll(outR)
+	require.NoError(t, err)
+
+	var got viewJSONOutput
+	require.NoError(t, json.Unmarshal(raw, &got))
+
+	// feat/01 is queued: needsRebase must be false regardless of git state.
+	b0 := got.Branches[0]
+	assert.True(t, b0.IsQueued)
+	assert.False(t, b0.NeedsRebase, "queued branches must not report needsRebase=true")
+
+	// feat/02 is open and divergent: needsRebase must be true.
+	b1 := got.Branches[1]
+	assert.False(t, b1.IsQueued)
+	assert.True(t, b1.NeedsRebase, "open divergent branches should report needsRebase=true")
+}
+
 // TestViewShort_ActiveStack verifies that --short output contains all branch
 // names and the trunk for an active stack.
 func TestViewShort_ActiveStack(t *testing.T) {
