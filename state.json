@@ -1,7 +1,7 @@
 {
-  "last_run": "2026-04-17T07:30:56Z",
-  "workflow_run_id": "24553396962",
-  "monthly_summary_issue": 5,
+  "last_run": "2026-04-17T07:44:58Z",
+  "workflow_run_id": "24553918140",
+  "monthly_summary_issue": null,
   "issue_cursor": null,
   "comments_made": {},
   "pr_attempts": {
@@ -12,13 +12,19 @@
       "status": "open"
     },
     "queued-pr-color": {
-      "branch": "repo-assist/improve-queued-pr-color-2026-04-17",
+      "branch": "repo-assist/improve-queued-pr-color-2026-04-17-708707443f8ac0ef",
       "description": "Use warning color for queued PR numbers in short view",
+      "pr_number": 6,
+      "status": "open"
+    },
+    "batch-pr-fetch": {
+      "branch": "repo-assist/perf-batch-pr-fetch-2026-04-17",
+      "description": "Batch PR fetch in syncStackPRs: N+1 GraphQL calls to 1",
       "pr_number": null,
-      "status": "open",
-      "note": "Patch created; PR creation blocked by permissions - branch pushed to origin"
+      "status": "patch-pending",
+      "note": "Branch committed locally, PR creation returned patch file (permissions may be blocked). Branch not pushed to origin."
     }
   },
-  "closed_issues": [3],
-  "notes": "Issue #3 (duplicate monthly summary) closed. PR #4 (draft PR status) open for review. Branch repo-assist/improve-queued-pr-color-2026-04-17 has queued-color fix pending PR creation."
+  "closed_issues": [3, 5],
+  "notes": "Issue #5 (monthly summary) closed by jitran. New monthly summary created this run. PR #4 (draft PR status) and PR #6 (queued color) both open for review. Batch PR fetch perf improvement committed locally but PR not created (permissions issue). Issue #2 is a workaround issue for failed PR creation - should be closed now that PR #4 exists. Monthly summary issue number not yet known (created this run)."
 }
