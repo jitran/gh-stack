@@ -416,3 +416,41 @@ func indexOf(s, substr string) int {
 	}
 	return -1
 }
+
+// TestShortPRSuffix_QueuedUsesWarningColor verifies that a queued PR's number
+// is rendered with ColorWarning (yellow) rather than ColorSuccess (green), so
+// the suffix stays visually consistent with the yellow ◎ indicator shown by
+// branchStatusIndicator.
+func TestShortPRSuffix_QueuedUsesWarningColor(t *testing.T) {
+	cfg, outR, errR := config.NewTestConfig()
+	defer outR.Close()
+	defer errR.Close()
+
+	var successCalled, warningCalled bool
+	cfg.ColorSuccess = func(s string) string { successCalled = true; return "success:" + s }
+	cfg.ColorWarning = func(s string) string { warningCalled = true; return "warning:" + s }
+	cfg.ColorMagenta = func(s string) string { return "magenta:" + s }
+
+	// Queued PR: should use warning color.
+	queuedBranch := stack.BranchRef{
+		Branch:      "feat/01",
+		PullRequest: &stack.PullRequestRef{Number: 42, URL: "https://github.com/o/r/pull/42"},
+		Queued:      true,
+	}
+	result := shortPRSuffix(cfg, queuedBranch, "", "", "")
+	assert.Contains(t, result, "warning:", "queued PR should use warning color")
+	assert.True(t, warningCalled, "warningCalled should be true for queued PR")
+	assert.False(t, successCalled, "successCalled should be false for queued PR")
+
+	// Open (non-queued) PR: should use success color.
+	successCalled = false
+	warningCalled = false
+	openBranch := stack.BranchRef{
+		Branch:      "feat/02",
+		PullRequest: &stack.PullRequestRef{Number: 43, URL: "https://github.com/o/r/pull/43"},
+	}
+	result = shortPRSuffix(cfg, openBranch, "", "", "")
+	assert.Contains(t, result, "success:", "open PR should use success color")
+	assert.True(t, successCalled, "successCalled should be true for open PR")
+	assert.False(t, warningCalled, "warningCalled should be false for open PR")
+}
