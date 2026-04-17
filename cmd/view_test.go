@@ -206,6 +206,60 @@ func TestViewJSON_BranchFields(t *testing.T) {
 	assert.Equal(t, "OPEN", b1.PR.State)
 }
 
+func TestViewJSON_DraftPR(t *testing.T) {
+	git.SetOps(&git.MockOps{
+		IsAncestorFn: func(ancestor, descendant string) (bool, error) {
+			return true, nil
+		},
+	})
+
+	s := &stack.Stack{
+		Trunk: stack.BranchRef{Branch: "main"},
+		Branches: []stack.BranchRef{
+			{
+				Branch: "feat-draft",
+				PullRequest: &stack.PullRequestRef{
+					Number:  99,
+					URL:     "https://github.com/o/r/pull/99",
+					IsDraft: true,
+				},
+			},
+			{
+				Branch: "feat-ready",
+				PullRequest: &stack.PullRequestRef{
+					Number: 100,
+					URL:    "https://github.com/o/r/pull/100",
+				},
+			},
+		},
+	}
+
+	cfg, outR, _ := config.NewTestConfig()
+	defer outR.Close()
+
+	err := viewJSON(cfg, s, "feat-draft")
+	require.NoError(t, err)
+	cfg.Out.Close()
+
+	raw, err := io.ReadAll(outR)
+	require.NoError(t, err)
+
+	var got viewJSONOutput
+	require.NoError(t, json.Unmarshal(raw, &got))
+
+	// Draft branch
+	draft := got.Branches[0]
+	require.NotNil(t, draft.PR)
+	assert.Equal(t, "DRAFT", draft.PR.State)
+	assert.True(t, draft.PR.IsDraft)
+
+	// Ready-for-review branch
+	ready := got.Branches[1]
+	require.NotNil(t, ready.PR)
+	assert.Equal(t, "OPEN", ready.PR.State)
+	assert.False(t, ready.PR.IsDraft)
+}
+
 // TestViewShort_ActiveStack verifies that --short output contains all branch
 // names and the trunk for an active stack.
 func TestViewShort_ActiveStack(t *testing.T) {
