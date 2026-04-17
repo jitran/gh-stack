@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/cli/go-gh/v2/pkg/api"
 	graphql "github.com/cli/shurcooL-graphql"
@@ -117,6 +118,75 @@ func (c *Client) FindPRForBranch(branch string) (*PullRequest, error) {
 		Merged:          n.Merged,
 		MergeQueueEntry: n.MergeQueueEntry,
 	}, nil
+}
+
+// FindPRsForBranches fetches the most recent PR for each branch in a single
+// batched GraphQL query, reducing N API round-trips to 1.
+// Keys in the returned map are branch names. Branches with no PR are absent.
+func (c *Client) FindPRsForBranches(branches []string) (map[string]*PullRequest, error) {
+	if len(branches) == 0 {
+		return make(map[string]*PullRequest), nil
+	}
+
+	// Build a query with one aliased pullRequests field per branch.
+	// GraphQL aliases let us fetch N branches in one round-trip.
+	const prFields = `{ nodes { id number title state url headRefName baseRefName isDraft merged mergeQueueEntry { id } } }`
+	var sb strings.Builder
+	fmt.Fprintf(&sb, `{ repository(owner: %q, name: %q) {`, c.owner, c.repo)
+	for i, branch := range branches {
+		fmt.Fprintf(&sb, ` b%d: pullRequests(headRefName: %q, last: 1) %s`, i, branch, prFields)
+	}
+	sb.WriteString(` } }`)
+
+	// prNode mirrors the GraphQL PR fields used above.
+	type prNode struct {
+		ID              string `json:"id"`
+		Number          int    `json:"number"`
+		Title           string `json:"title"`
+		State           string `json:"state"`
+		URL             string `json:"url"`
+		HeadRefName     string `json:"headRefName"`
+		BaseRefName     string `json:"baseRefName"`
+		IsDraft         bool   `json:"isDraft"`
+		Merged          bool   `json:"merged"`
+		MergeQueueEntry *struct {
+			ID string `json:"id"`
+		} `json:"mergeQueueEntry"`
+	}
+	var resp struct {
+		Repository map[string]struct {
+			Nodes []prNode `json:"nodes"`
+		} `json:"repository"`
+	}
+
+	if err := c.gql.Do(sb.String(), nil, &resp); err != nil {
+		return nil, fmt.Errorf("batch PR query: %w", err)
+	}
+
+	result := make(map[string]*PullRequest, len(branches))
+	for i, branch := range branches {
+		bucket, ok := resp.Repository[fmt.Sprintf("b%d", i)]
+		if !ok || len(bucket.Nodes) == 0 {
+			continue
+		}
+		n := bucket.Nodes[0]
+		pr := &PullRequest{
+			ID:          n.ID,
+			Number:      n.Number,
+			Title:       n.Title,
+			State:       n.State,
+			URL:         n.URL,
+			HeadRefName: n.HeadRefName,
+			BaseRefName: n.BaseRefName,
+			IsDraft:     n.IsDraft,
+			Merged:      n.Merged,
+		}
+		if n.MergeQueueEntry != nil {
+			pr.MergeQueueEntry = &MergeQueueEntry{ID: n.MergeQueueEntry.ID}
+		}
+		result[branch] = pr
+	}
+	return result, nil
 }
 
 // FindAnyPRForBranch finds the most recent PR by head branch name regardless of state.
