@@ -110,16 +110,31 @@ func runSubmit(cfg *config.Config, opts *submitOptions) error {
 	// Create or update PRs — ensure every active branch has a PR with the
 	// correct base branch. This makes submit idempotent: running it again
 	// fills gaps and fixes base branches before syncing the stack.
+	//
+	// Pre-fetch all open PRs in one batch query to avoid N sequential
+	// round-trips (one per branch).
+	openPRs, fetchErr := client.FindOpenPRsForBranches(activeBranches)
+	if fetchErr != nil {
+		// Fall back to per-branch lookups if the batch query fails.
+		openPRs = nil
+	}
+
 	for i, b := range s.Branches {
 		if s.Branches[i].IsMerged() || s.Branches[i].IsQueued() {
 			continue
 		}
 		baseBranch := s.ActiveBaseBranch(b.Branch)
 
-		pr, err := client.FindPRForBranch(b.Branch)
-		if err != nil {
-			cfg.Warningf("failed to check PR for %s: %v", b.Branch, err)
-			continue
+		var pr *github.PullRequest
+		if openPRs != nil {
+			pr = openPRs[b.Branch]
+		} else {
+			var lookupErr error
+			pr, lookupErr = client.FindPRForBranch(b.Branch)
+			if lookupErr != nil {
+				cfg.Warningf("failed to check PR for %s: %v", b.Branch, lookupErr)
+				continue
+			}
 		}
 
 		if pr == nil {
