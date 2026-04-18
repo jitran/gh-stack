@@ -1,6 +1,6 @@
 {
-  "last_run": "2026-04-17T14:04:48Z",
-  "workflow_run_id": "24569173417",
+  "last_run": "2026-04-18T13:42:28Z",
+  "workflow_run_id": "24605929087",
   "monthly_summary_issue": 8,
   "issue_cursor": null,
   "comments_made": {},
@@ -24,20 +24,27 @@
       "status": "open"
     },
     "add-dependabot": {
-      "branch": "repo-assist/eng-add-dependabot-2026-04-17",
+      "branch": "repo-assist/eng-add-dependabot-2026-04-17-6ba553ac96099d13",
       "description": "Add Dependabot config for Go modules and GitHub Actions",
       "pr_number": null,
+      "issue_number": 9,
       "status": "patch-pending",
-      "note": "PR creation returned patch file (permissions). Branch committed locally."
+      "note": "Protected file — issue #9 created with link to create PR manually."
     },
     "fix-needsrebase-queued": {
-      "branch": "repo-assist/improve-needsrebase-queued-2026-04-17",
+      "branch": "repo-assist/improve-needsrebase-queued-2026-04-17-e50526bcf1c1e19d",
       "description": "Fix needsRebase=true incorrectly set for queued branches in JSON output",
+      "pr_number": 10,
+      "status": "open"
+    },
+    "batch-submit-pr-fetch": {
+      "branch": "repo-assist/perf-batch-submit-pr-fetch-2026-04-18",
+      "description": "Batch open-PR fetch in submit: N API calls to 1",
       "pr_number": null,
       "status": "patch-pending",
-      "note": "PR creation returned patch file (permissions). Branch committed locally."
+      "note": "Branch committed locally, push blocked by permissions. Changes: FindOpenPRsForBranches in github.go, client_interface.go, mock_client.go; updated submit.go and submit_test.go."
     }
   },
   "closed_issues": [3, 5],
-  "notes": "Monthly summary is issue #8. PRs #4, #6, #7 open for review. Issue #2 (stale workaround) should be closed once PR #4 is merged. Two new branches created this run for dependabot config and needsRebase fix — PRs blocked by permissions. Enabling Actions PR creation in Settings would unblock future PR creation."
+  "notes": "Monthly summary is issue #8. PRs #4, #6, #7, #10 open for review. Issue #9 for dependabot (protected file). Issue #2 (stale workaround) should be closed once PR #4 is merged. Branch repo-assist/perf-batch-submit-pr-fetch-2026-04-18 is committed locally but not pushed — retry next run once permissions resolved."
 }
