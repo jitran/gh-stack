@@ -1,6 +1,6 @@
 {
-  "last_run": "2026-04-18T13:42:28Z",
-  "workflow_run_id": "24605929087",
+  "last_run": "2026-04-19T13:41:11Z",
+  "workflow_run_id": "24630435287",
   "monthly_summary_issue": 8,
   "issue_cursor": null,
   "comments_made": {},
@@ -32,19 +32,26 @@
       "note": "Protected file — issue #9 created with link to create PR manually."
     },
     "fix-needsrebase-queued": {
-      "branch": "repo-assist/improve-needsrebase-queued-2026-04-17-e50526bcf1c1e19d",
+      "branch": "repo-assist/improve-needsrebase-queued-2026-04-18-75769f450f17c2af",
       "description": "Fix needsRebase=true incorrectly set for queued branches in JSON output",
-      "pr_number": 10,
-      "status": "open"
+      "pr_number": 11,
+      "status": "open",
+      "note": "PR #10 is a duplicate (older branch) — should be closed."
     },
     "batch-submit-pr-fetch": {
       "branch": "repo-assist/perf-batch-submit-pr-fetch-2026-04-18",
       "description": "Batch open-PR fetch in submit: N API calls to 1",
+      "pr_number": 12,
+      "status": "open"
+    },
+    "fix-rebase-skip-queued": {
+      "branch": "repo-assist/fix-rebase-skip-queued-2026-04-19",
+      "description": "Fix gh stack rebase not skipping queued branches",
       "pr_number": null,
       "status": "patch-pending",
-      "note": "Branch committed locally, push blocked by permissions. Changes: FindOpenPRsForBranches in github.go, client_interface.go, mock_client.go; updated submit.go and submit_test.go."
+      "note": "Branch committed, patch created. PR needs to be created manually from branch."
     }
   },
   "closed_issues": [3, 5],
-  "notes": "Monthly summary is issue #8. PRs #4, #6, #7, #10 open for review. Issue #9 for dependabot (protected file). Issue #2 (stale workaround) should be closed once PR #4 is merged. Branch repo-assist/perf-batch-submit-pr-fetch-2026-04-18 is committed locally but not pushed — retry next run once permissions resolved."
+  "notes": "Monthly summary is issue #8. Open PRs: #4, #6, #7, #11, #12 (plus new fix-rebase-skip-queued patch). PR #10 is a duplicate of #11 — suggest closing #10. Issue #2 should be closed once PR #4 is merged. Issue #9 for dependabot (protected file)."
 }
