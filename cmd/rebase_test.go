@@ -32,12 +32,12 @@ type resetCall struct {
 // callers to override specific function fields after creation.
 func newRebaseMock(tmpDir string, currentBranch string) *git.MockOps {
 	return &git.MockOps{
-		GitDirFn:        func() (string, error) { return tmpDir, nil },
-		CurrentBranchFn: func() (string, error) { return currentBranch, nil },
-		RevParseFn:       func(ref string) (string, error) { return "sha-" + ref, nil },
-		IsAncestorFn:    func(a, d string) (bool, error) { return true, nil },
-		FetchFn:         func(string) error { return nil },
-		EnableRerereFn:  func() error { return nil },
+		GitDirFn:             func() (string, error) { return tmpDir, nil },
+		CurrentBranchFn:      func() (string, error) { return currentBranch, nil },
+		RevParseFn:           func(ref string) (string, error) { return "sha-" + ref, nil },
+		IsAncestorFn:         func(a, d string) (bool, error) { return true, nil },
+		FetchFn:              func(string) error { return nil },
+		EnableRerereFn:       func() error { return nil },
 		IsRebaseInProgressFn: func() bool { return false },
 	}
 }
@@ -528,6 +528,128 @@ func TestRebase_SkipsMergedBranches(t *testing.T) {
 	// Only b2 should be rebased
 	require.Len(t, rebaseCalls, 1)
 	assert.Equal(t, "b2", rebaseCalls[0].branch)
+}
+
+// TestRebase_SkipsQueuedBranches verifies that branches whose PRs are in a
+// merge queue are skipped during rebase, like merged branches.
+func TestRebase_SkipsQueuedBranches(t *testing.T) {
+	s := stack.Stack{
+		Trunk: stack.BranchRef{Branch: "main"},
+		Branches: []stack.BranchRef{
+			{Branch: "b1", Queued: true, PullRequest: &stack.PullRequestRef{Number: 42}},
+			{Branch: "b2"},
+		},
+	}
+
+	tmpDir := t.TempDir()
+	writeStackFile(t, tmpDir, s)
+
+	var rebaseCalls []rebaseCall
+
+	mock := newRebaseMock(tmpDir, "b2")
+	mock.RebaseOntoFn = func(newBase, oldBase, branch string) error {
+		rebaseCalls = append(rebaseCalls, rebaseCall{newBase, oldBase, branch})
+		return nil
+	}
+
+	restore := git.SetOps(mock)
+	defer restore()
+
+	cfg, _, errR := config.NewTestConfig()
+	cmd := RebaseCmd(cfg)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	err := cmd.Execute()
+
+	cfg.Err.Close()
+	errOut, _ := io.ReadAll(errR)
+	output := string(errOut)
+
+	assert.NoError(t, err)
+	assert.Contains(t, output, "Skipping b1")
+	assert.Contains(t, output, "queued")
+
+	// b2 should use --onto targeting trunk (b1 is skipped as queued)
+	require.Len(t, rebaseCalls, 1)
+	assert.Equal(t, rebaseCall{"main", "sha-b1", "b2"}, rebaseCalls[0],
+		"b2 should rebase --onto main skipping the queued b1")
+}
+
+// TestRebase_QueuedBranch_UsesOnto verifies the --onto rebase path when a
+// queued branch sits between active branches in the stack.
+func TestRebase_QueuedBranch_UsesOnto(t *testing.T) {
+	s := stack.Stack{
+		Trunk: stack.BranchRef{Branch: "main"},
+		Branches: []stack.BranchRef{
+			{Branch: "b1"},
+			{Branch: "b2", Queued: true, PullRequest: &stack.PullRequestRef{Number: 10}},
+			{Branch: "b3"},
+			{Branch: "b4"},
+		},
+	}
+
+	tmpDir := t.TempDir()
+	writeStackFile(t, tmpDir, s)
+
+	branchSHAs := map[string]string{
+		"main": "main-sha",
+		"b1":   "b1-orig-sha",
+		"b2":   "b2-orig-sha",
+		"b3":   "b3-orig-sha",
+		"b4":   "b4-orig-sha",
+	}
+
+	var rebaseCalls []rebaseCall
+	var currentCheckedOut string
+
+	mock := newRebaseMock(tmpDir, "b3")
+	mock.RevParseFn = func(ref string) (string, error) {
+		if sha, ok := branchSHAs[ref]; ok {
+			return sha, nil
+		}
+		return "default-sha", nil
+	}
+	mock.CheckoutBranchFn = func(name string) error {
+		currentCheckedOut = name
+		return nil
+	}
+	mock.RebaseFn = func(base string) error {
+		rebaseCalls = append(rebaseCalls, rebaseCall{newBase: base, branch: currentCheckedOut})
+		return nil
+	}
+	mock.RebaseOntoFn = func(newBase, oldBase, branch string) error {
+		rebaseCalls = append(rebaseCalls, rebaseCall{newBase, oldBase, branch})
+		return nil
+	}
+
+	restore := git.SetOps(mock)
+	defer restore()
+
+	cfg, _, errR := config.NewTestConfig()
+	cmd := RebaseCmd(cfg)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	err := cmd.Execute()
+
+	cfg.Err.Close()
+	errOut, _ := io.ReadAll(errR)
+	output := string(errOut)
+
+	assert.NoError(t, err)
+	assert.Contains(t, output, "Skipping b2")
+	assert.Contains(t, output, "queued")
+
+	// b1: checkout b1 + Rebase("main") — normal cascade for absIdx=0
+	// b2: skipped (queued), ontoOldBase = b2-orig-sha
+	// b3: --onto b1 (first non-skipped ancestor), oldBase = b2-orig-sha
+	// b4: --onto b3 (propagate onto mode), oldBase = b3-orig-sha
+	require.Len(t, rebaseCalls, 3, "b1, b3, b4 should be rebased; b2 skipped")
+	assert.Equal(t, rebaseCall{"main", "", "b1"}, rebaseCalls[0],
+		"b1 rebased normally onto main via regular rebase")
+	assert.Equal(t, rebaseCall{"b1", "b2-orig-sha", "b3"}, rebaseCalls[1],
+		"b3 rebases --onto b1 skipping queued b2")
+	assert.Equal(t, rebaseCall{"b3", "b3-orig-sha", "b4"}, rebaseCalls[2],
+		"b4 propagates onto mode onto b3")
 }
 
 // TestRebase_StateRoundTrip verifies that rebase state can be saved and loaded
