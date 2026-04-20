@@ -1,9 +1,11 @@
 {
-  "last_run": "2026-04-19T13:41:11Z",
-  "workflow_run_id": "24630435287",
+  "last_run": "2026-04-20T14:20:37Z",
+  "workflow_run_id": "24671699299",
   "monthly_summary_issue": 8,
   "issue_cursor": null,
-  "comments_made": {},
+  "comments_made": {
+    "2": "2026-04-20T14:20:37Z"
+  },
   "pr_attempts": {
     "draft-pr-status": {
       "branch": "repo-assist/improve-draft-pr-status-2026-04-17-46f83115cc2d40c6",
@@ -45,13 +47,19 @@
       "status": "open"
     },
     "fix-rebase-skip-queued": {
-      "branch": "repo-assist/fix-rebase-skip-queued-2026-04-19",
+      "branch": "repo-assist/fix-rebase-skip-queued-2026-04-19-8bf0fde17fa24e75",
       "description": "Fix gh stack rebase not skipping queued branches",
+      "pr_number": 13,
+      "status": "open"
+    },
+    "fix-navigate-skip-queued": {
+      "branch": "repo-assist/fix-navigate-skip-queued-2026-04-20",
+      "description": "Fix gh stack up/down skip counter to include queued branches (IsMerged -> IsSkipped, message: inactive)",
       "pr_number": null,
       "status": "patch-pending",
-      "note": "Branch committed, patch created. PR needs to be created manually from branch."
+      "note": "PR submitted this run — number TBD (check repo for latest open PR)"
     }
   },
   "closed_issues": [3, 5],
-  "notes": "Monthly summary is issue #8. Open PRs: #4, #6, #7, #11, #12 (plus new fix-rebase-skip-queued patch). PR #10 is a duplicate of #11 — suggest closing #10. Issue #2 should be closed once PR #4 is merged. Issue #9 for dependabot (protected file)."
+  "notes": "Monthly summary is issue #8. Open PRs: #4, #6, #7, #11, #12, #13 plus new navigate fix. PR #10 is a duplicate of #11 — suggest closing #10. Issue #2 should be closed once PR #4 is merged (commented this run). Issue #9 for dependabot (protected file)."
 }
