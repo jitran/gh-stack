@@ -416,3 +416,61 @@ func indexOf(s, substr string) int {
 	}
 	return -1
 }
+
+// TestViewJSON_QueuedBranch verifies that viewJSON correctly represents a
+// queued branch: isQueued must be true and the PR state must be "QUEUED".
+func TestViewJSON_QueuedBranch(t *testing.T) {
+	git.SetOps(&git.MockOps{
+		IsAncestorFn: func(ancestor, descendant string) (bool, error) {
+			return true, nil
+		},
+	})
+
+	s := &stack.Stack{
+		Trunk: stack.BranchRef{Branch: "main", Head: "aaa"},
+		Branches: []stack.BranchRef{
+			{
+				Branch:      "feat/01",
+				Head:        "bbb",
+				Base:        "aaa",
+				PullRequest: &stack.PullRequestRef{Number: 10, URL: "https://github.com/o/r/pull/10"},
+				Queued:      true,
+			},
+			{
+				Branch:      "feat/02",
+				Head:        "ccc",
+				Base:        "bbb",
+				PullRequest: &stack.PullRequestRef{Number: 11, URL: "https://github.com/o/r/pull/11"},
+			},
+		},
+	}
+
+	cfg, outR, _ := config.NewTestConfig()
+	defer outR.Close()
+
+	err := viewJSON(cfg, s, "feat/02")
+	require.NoError(t, err)
+	cfg.Out.Close()
+
+	raw, err := io.ReadAll(outR)
+	require.NoError(t, err)
+
+	var got viewJSONOutput
+	require.NoError(t, json.Unmarshal(raw, &got))
+
+	require.Len(t, got.Branches, 2)
+
+	queued := got.Branches[0]
+	assert.Equal(t, "feat/01", queued.Name)
+	assert.True(t, queued.IsQueued, "queued branch should have isQueued=true")
+	assert.False(t, queued.IsMerged, "queued branch should not be isMerged")
+	require.NotNil(t, queued.PR)
+	assert.Equal(t, "QUEUED", queued.PR.State, "queued PR should have state QUEUED")
+	assert.Equal(t, 10, queued.PR.Number)
+
+	open := got.Branches[1]
+	assert.Equal(t, "feat/02", open.Name)
+	assert.False(t, open.IsQueued, "active branch should not be isQueued")
+	require.NotNil(t, open.PR)
+	assert.Equal(t, "OPEN", open.PR.State)
+}
