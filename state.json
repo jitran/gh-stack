@@ -1,6 +1,6 @@
 {
-  "last_run": "2026-04-20T14:20:37Z",
-  "workflow_run_id": "24671699299",
+  "last_run": "2026-04-21T14:17:24Z",
+  "workflow_run_id": "24727440353",
   "monthly_summary_issue": 8,
   "issue_cursor": null,
   "comments_made": {
@@ -53,13 +53,19 @@
       "status": "open"
     },
     "fix-navigate-skip-queued": {
-      "branch": "repo-assist/fix-navigate-skip-queued-2026-04-20",
-      "description": "Fix gh stack up/down skip counter to include queued branches (IsMerged -> IsSkipped, message: inactive)",
+      "branch": "repo-assist/fix-navigate-skip-queued-2026-04-20-14990f9b3382b851",
+      "description": "Fix gh stack up/down skip counter to include queued branches",
+      "pr_number": 14,
+      "status": "open"
+    },
+    "test-queued-state": {
+      "branch": "repo-assist/test-queued-state-2026-04-21",
+      "description": "Add TestPush_SkipsQueuedBranches and TestViewJSON_QueuedBranch",
       "pr_number": null,
       "status": "patch-pending",
-      "note": "PR submitted this run — number TBD (check repo for latest open PR)"
+      "note": "Branch pushed, no PR created (no Actions permissions). Maintainer can create PR from branch compare link."
     }
   },
   "closed_issues": [3, 5],
-  "notes": "Monthly summary is issue #8. Open PRs: #4, #6, #7, #11, #12, #13 plus new navigate fix. PR #10 is a duplicate of #11 — suggest closing #10. Issue #2 should be closed once PR #4 is merged (commented this run). Issue #9 for dependabot (protected file)."
+  "notes": "Monthly summary is issue #8. Open PRs: #4, #6, #7, #11, #12, #13, #14. PR #10 is a duplicate of #11 — suggest closing #10. Issue #2 should be closed once PR #4 is merged. Issue #9 for dependabot (protected file). Testing PR branch pushed: repo-assist/test-queued-state-2026-04-21."
 }
