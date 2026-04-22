@@ -1,6 +1,6 @@
 {
-  "last_run": "2026-04-21T14:17:24Z",
-  "workflow_run_id": "24727440353",
+  "last_run": "2026-04-22T14:18:09Z",
+  "workflow_run_id": "24783378619",
   "monthly_summary_issue": 8,
   "issue_cursor": null,
   "comments_made": {
@@ -59,13 +59,18 @@
       "status": "open"
     },
     "test-queued-state": {
-      "branch": "repo-assist/test-queued-state-2026-04-21",
+      "branch": "repo-assist/test-queued-state-2026-04-21-3021d2a52d3508d8",
       "description": "Add TestPush_SkipsQueuedBranches and TestViewJSON_QueuedBranch",
-      "pr_number": null,
-      "status": "patch-pending",
-      "note": "Branch pushed, no PR created (no Actions permissions). Maintainer can create PR from branch compare link."
+      "pr_number": 15,
+      "status": "open"
+    },
+    "fix-top-skip-merged-queued": {
+      "branch": "repo-assist/improve-top-skip-merged-queued-2026-04-22",
+      "description": "Fix gh stack top to skip merged/queued branches (adds LastActiveBranchIndex)",
+      "pr_number": 16,
+      "status": "open"
     }
   },
   "closed_issues": [3, 5],
-  "notes": "Monthly summary is issue #8. Open PRs: #4, #6, #7, #11, #12, #13, #14. PR #10 is a duplicate of #11 — suggest closing #10. Issue #2 should be closed once PR #4 is merged. Issue #9 for dependabot (protected file). Testing PR branch pushed: repo-assist/test-queued-state-2026-04-21."
+  "notes": "Monthly summary is issue #8. Open PRs: #4, #6, #7, #11, #12, #13, #14, #15, #16. PR #10 is a duplicate of #11 — suggest closing #10. Issue #2 should be closed once PR #4 is merged. Issue #9 for dependabot (protected file). All issues are Repo Assist generated — no user issues to comment on (Task 2 had nothing to do this run)."
 }
