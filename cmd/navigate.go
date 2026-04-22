@@ -197,7 +197,12 @@ func runNavigateToEnd(cfg *config.Config, top bool) error {
 
 	var targetIdx int
 	if top {
-		targetIdx = len(s.Branches) - 1
+		targetIdx = s.LastActiveBranchIndex()
+		if targetIdx < 0 {
+			// All merged/queued — fall back to last branch with warning
+			targetIdx = len(s.Branches) - 1
+			cfg.Warningf("Warning: all branches in this stack have been merged or queued")
+		}
 	} else {
 		targetIdx = s.FirstActiveBranchIndex()
 		if targetIdx < 0 {
