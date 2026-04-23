@@ -97,16 +97,22 @@ func runNavigate(cfg *config.Config, delta int) error {
 		return nil
 	}
 
-	onMerged := s.Branches[idx].IsMerged()
-	if onMerged {
+	onSkipped := s.Branches[idx].IsSkipped()
+	if s.Branches[idx].IsMerged() {
 		cfg.Warningf("Warning: you are on merged branch %q", currentBranch)
+	} else if s.Branches[idx].IsQueued() {
+		cfg.Warningf("Warning: you are on queued branch %q", currentBranch)
 	}
 
 	var newIdx int
 	var skipped int
 
-	if onMerged {
-		// Navigate relative to current position among ALL branches
+	if onSkipped {
+		// Navigate relative to current position among ALL branches.
+		// Merged and queued branches are treated the same way here: the user
+		// is on a non-active branch, so we navigate by raw index (delta ±1)
+		// rather than filtering to the active set, matching the intuitive
+		// expectation of "move one step up/down from here".
 		newIdx = idx + delta
 		if newIdx < 0 {
 			newIdx = 0
@@ -115,7 +121,7 @@ func runNavigate(cfg *config.Config, delta int) error {
 			newIdx = len(s.Branches) - 1
 		}
 	} else {
-		// Build list of active (non-merged) branch indices
+		// Build list of active (non-merged, non-queued) branch indices.
 		activeIndices := s.ActiveBranchIndices()
 
 		// Find current position in active list
@@ -137,16 +143,16 @@ func runNavigate(cfg *config.Config, delta int) error {
 
 		newIdx = activeIndices[newActivePos]
 
-		// Count how many merged branches were skipped
+		// Count how many inactive (merged or queued) branches were skipped.
 		if newIdx > idx {
 			for i := idx + 1; i < newIdx; i++ {
-				if s.Branches[i].IsMerged() {
+				if s.Branches[i].IsSkipped() {
 					skipped++
 				}
 			}
 		} else if newIdx < idx {
 			for i := newIdx + 1; i < idx; i++ {
-				if s.Branches[i].IsMerged() {
+				if s.Branches[i].IsSkipped() {
 					skipped++
 				}
 			}
@@ -168,7 +174,7 @@ func runNavigate(cfg *config.Config, delta int) error {
 	}
 
 	if skipped > 0 {
-		cfg.Printf("Skipped %d merged %s", skipped, plural(skipped, "branch", "branches"))
+		cfg.Printf("Skipped %d inactive %s", skipped, plural(skipped, "branch", "branches"))
 	}
 
 	moved := newIdx - idx
