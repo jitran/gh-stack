@@ -1,6 +1,6 @@
 {
-  "last_run": "2026-04-22T14:18:09Z",
-  "workflow_run_id": "24783378619",
+  "last_run": "2026-04-23T14:20:45Z",
+  "workflow_run_id": "24840504747",
   "monthly_summary_issue": 8,
   "issue_cursor": null,
   "comments_made": {
@@ -11,7 +11,8 @@
       "branch": "repo-assist/improve-draft-pr-status-2026-04-17-46f83115cc2d40c6",
       "description": "Track and surface draft PR status throughout",
       "pr_number": 4,
-      "status": "open"
+      "status": "open",
+      "note": "Rebased onto main 2026-04-23."
     },
     "queued-pr-color": {
       "branch": "repo-assist/improve-queued-pr-color-2026-04-17-708707443f8ac0ef",
@@ -65,12 +66,19 @@
       "status": "open"
     },
     "fix-top-skip-merged-queued": {
-      "branch": "repo-assist/improve-top-skip-merged-queued-2026-04-22",
+      "branch": "repo-assist/improve-top-skip-merged-queued-2026-04-22-b9c559766d98f99d",
       "description": "Fix gh stack top to skip merged/queued branches (adds LastActiveBranchIndex)",
       "pr_number": 16,
       "status": "open"
+    },
+    "fix-navigate-from-queued": {
+      "branch": "repo-assist/fix-navigate-from-queued-2026-04-23",
+      "description": "Fix gh stack up/down navigation when starting from a queued branch",
+      "pr_number": null,
+      "status": "branch-pushed",
+      "note": "create_pull_request returned success with patch. Branch pushed to remote. PR creation pending permissions. See monthly summary for create-PR link."
     }
   },
   "closed_issues": [3, 5],
-  "notes": "Monthly summary is issue #8. Open PRs: #4, #6, #7, #11, #12, #13, #14, #15, #16. PR #10 is a duplicate of #11 — suggest closing #10. Issue #2 should be closed once PR #4 is merged. Issue #9 for dependabot (protected file). All issues are Repo Assist generated — no user issues to comment on (Task 2 had nothing to do this run)."
+  "notes": "Monthly summary is issue #8. Open PRs: #4, #6, #7, #11, #12, #13, #14, #15, #16. PR #10 is a duplicate of #11 — suggest closing #10. Issue #2 should be closed once PR #4 is merged. Issue #9 for dependabot (protected file). New branch fix-navigate-from-queued-2026-04-23 pushed — PR creation pending GH Actions permissions. This run: rebased PR #4 branch, created navigate-from-queued fix branch."
 }
