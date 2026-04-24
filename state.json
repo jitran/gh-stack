@@ -1,6 +1,6 @@
 {
-  "last_run": "2026-04-23T14:20:45Z",
-  "workflow_run_id": "24840504747",
+  "last_run": "2026-04-24T14:15:43Z",
+  "workflow_run_id": "24894105394",
   "monthly_summary_issue": 8,
   "issue_cursor": null,
   "comments_made": {
@@ -72,13 +72,26 @@
       "status": "open"
     },
     "fix-navigate-from-queued": {
-      "branch": "repo-assist/fix-navigate-from-queued-2026-04-23",
+      "branch": "repo-assist/fix-navigate-from-queued-2026-04-23-517d080f5a9a4765",
       "description": "Fix gh stack up/down navigation when starting from a queued branch",
+      "pr_number": 17,
+      "status": "open"
+    },
+    "fix-view-full-static-queued": {
+      "branch": "repo-assist/fix-view-full-static-queued-2026-04-24",
+      "description": "Fix viewFullStatic: add queued separator and correct branch coloring + 2 tests",
       "pr_number": null,
-      "status": "branch-pushed",
-      "note": "create_pull_request returned success with patch. Branch pushed to remote. PR creation pending permissions. See monthly summary for create-PR link."
+      "status": "patch-pending",
+      "note": "Branch pushed; PR creation pending GH Actions permissions. Create PR link in monthly summary."
+    },
+    "fix-rebase-isskipped": {
+      "branch": "repo-assist/fix-rebase-isskipped-2026-04-24",
+      "description": "Fix rebase.go: queued-branch warning, summary, and baseBranch consistency",
+      "pr_number": null,
+      "status": "patch-pending",
+      "note": "Branch pushed; PR creation pending GH Actions permissions. Create PR link in monthly summary."
     }
   },
   "closed_issues": [3, 5],
-  "notes": "Monthly summary is issue #8. Open PRs: #4, #6, #7, #11, #12, #13, #14, #15, #16. PR #10 is a duplicate of #11 — suggest closing #10. Issue #2 should be closed once PR #4 is merged. Issue #9 for dependabot (protected file). New branch fix-navigate-from-queued-2026-04-23 pushed — PR creation pending GH Actions permissions. This run: rebased PR #4 branch, created navigate-from-queued fix branch."
+  "notes": "Monthly summary is issue #8. Open PRs: #4, #6, #7, #11, #12, #13, #14, #15, #16, #17. PR #10 is a duplicate of #11 — suggest closing #10. Issue #2 should be closed once PR #4 is merged. Issue #9 for dependabot (protected file). This run (2026-04-24): created branch fix-view-full-static-queued (Task 3) and fix-rebase-isskipped (Task 4) — both pending PR creation due to GH Actions permissions."
 }
