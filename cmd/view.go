@@ -283,7 +283,12 @@ func viewFullStatic(cfg *config.Config, s *stack.Stack, currentBranch string) er
 	for i := len(s.Branches) - 1; i >= 0; i-- {
 		b := s.Branches[i]
 
-		// Insert separator when transitioning from active to merged section
+		// Insert separator when transitioning from active to queued section.
+		if b.IsQueued() && !b.IsMerged() && (i == len(s.Branches)-1 || (!s.Branches[i+1].IsQueued() && !s.Branches[i+1].IsMerged())) {
+			fmt.Fprintf(&buf, "╌╌╌ %s ╌╌╌\n", cfg.ColorWarning("queued"))
+		}
+
+		// Insert separator when transitioning from active/queued to merged section.
 		if b.IsMerged() && (i == len(s.Branches)-1 || !s.Branches[i+1].IsMerged()) {
 			fmt.Fprintf(&buf, "╌╌╌ %s ╌╌╌\n", cfg.ColorGray("merged"))
 		}
@@ -309,9 +314,16 @@ func viewFullStatic(cfg *config.Config, s *stack.Stack, currentBranch string) er
 			}
 		}
 
-		branchName := cfg.ColorMagenta(b.Branch)
-		if isCurrent {
+		var branchName string
+		switch {
+		case isCurrent:
 			branchName = cfg.ColorCyan(b.Branch + " (current)")
+		case b.IsMerged():
+			branchName = cfg.ColorMagenta(b.Branch)
+		case b.IsQueued():
+			branchName = cfg.ColorWarning(b.Branch)
+		default:
+			branchName = b.Branch
 		}
 
 		fmt.Fprintf(&buf, "%s %s %s%s\n", bullet, branchName, indicator, prInfo)
