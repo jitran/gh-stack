@@ -65,10 +65,24 @@ func runAdd(cfg *config.Config, opts *addOptions, args []string) error {
 	}
 
 	idx := s.IndexOf(currentBranch)
-	// idx < 0 means we're on the trunk — that's allowed (we'll create
-	// a new branch from it). Only block if we're in the middle of the stack.
-	if idx >= 0 && idx < len(s.Branches)-1 {
-		cfg.Errorf("can only add branches on top of the stack; run `%s` to switch to %q", cfg.ColorCyan("gh stack top"), s.Branches[len(s.Branches)-1].Branch)
+
+	// Find the last non-merged branch index so that merged branches sitting
+	// above active ones don't prevent adding, and so that adding from a
+	// merged branch (which has no unique local commits) is blocked correctly.
+	// Note: IsQueued() is transient (requires syncStackPRs); only IsMerged()
+	// (persisted) is checked here.
+	lastActiveIdx := len(s.Branches) - 1
+	for i := len(s.Branches) - 1; i >= 0; i-- {
+		if !s.Branches[i].IsMerged() {
+			lastActiveIdx = i
+			break
+		}
+	}
+
+	// idx < 0 means we're on the trunk — always allowed.
+	// Block if on a merged branch, or if not at the top of the active branches.
+	if idx >= 0 && (s.Branches[idx].IsMerged() || idx < lastActiveIdx) {
+		cfg.Errorf("can only add branches on top of the stack; run `%s` to switch to %q", cfg.ColorCyan("gh stack top"), s.Branches[lastActiveIdx].Branch)
 		return ErrInvalidArgs
 	}
 
