@@ -1,0 +1,79 @@
+{
+  "last_run": "2026-04-25T13:45:00Z",
+  "last_run_id": "24932266200",
+  "monthly_activity_issue": 8,
+  "comments_made": {
+    "2": "2026-04-20T14:20:00Z"
+  },
+  "fix_attempts": {
+    "fix-add-merged-top-check-2026-04-25": {
+      "branch": "repo-assist/fix-add-merged-top-check-2026-04-25",
+      "status": "branch_pushed_no_pr",
+      "description": "Fix gh stack add: use last active branch index for top-of-stack check"
+    },
+    "fix-view-full-static-queued-2026-04-24": {
+      "pr": 19,
+      "status": "open"
+    },
+    "fix-rebase-isskipped-2026-04-24": {
+      "pr": 20,
+      "status": "open"
+    },
+    "fix-navigate-from-queued-2026-04-23": {
+      "pr": 17,
+      "status": "open"
+    },
+    "improve-top-skip-merged-queued-2026-04-22": {
+      "pr": 16,
+      "status": "open"
+    },
+    "test-queued-state-2026-04-21": {
+      "pr": 15,
+      "status": "open"
+    },
+    "fix-navigate-skip-queued-2026-04-20": {
+      "pr": 14,
+      "status": "open"
+    },
+    "fix-rebase-skip-queued-2026-04-19": {
+      "pr": 13,
+      "status": "open"
+    },
+    "perf-batch-submit-pr-fetch-2026-04-18": {
+      "pr": 12,
+      "status": "open"
+    },
+    "improve-needsrebase-queued-2026-04-18": {
+      "pr": 11,
+      "status": "open"
+    },
+    "improve-needsrebase-queued-2026-04-17": {
+      "pr": 10,
+      "status": "open",
+      "note": "superseded by #11"
+    },
+    "eng-add-dependabot-2026-04-17": {
+      "branch": "repo-assist/eng-add-dependabot-2026-04-17",
+      "status": "branch_only",
+      "issue": 9
+    },
+    "perf-batch-pr-fetch-2026-04-17": {
+      "pr": 7,
+      "status": "open"
+    },
+    "improve-queued-pr-color-2026-04-17": {
+      "pr": 6,
+      "status": "open"
+    },
+    "improve-draft-pr-status-2026-04-17": {
+      "pr": 4,
+      "status": "open"
+    }
+  },
+  "notes": "PR creation blocked by GitHub Actions permissions. Branches are pushed but PRs must be created manually. Maintainer should: 1) Enable Actions PR creation in Settings, 2) Add sum.golang.org to network allowed list. PR #10 is superseded by PR #11 and should be closed. Issue #2 should be closed (superseded by PR #4). New branch fix-add-merged-top-check-2026-04-25 needs PR created manually. All 13 open Repo Assist PRs are cleanly mergeable with no CI failures.",
+  "backlog_cursor": {
+    "issues": 4,
+    "last_issue_processed": 2
+  },
+  "checked_off_by_maintainer": []
+}
