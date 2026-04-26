@@ -84,7 +84,7 @@ func runNavigate(cfg *config.Config, delta int) error {
 			targetIdx := s.FirstActiveBranchIndex()
 			if targetIdx < 0 {
 				targetIdx = len(s.Branches) - 1
-				cfg.Warningf("Warning: all branches in this stack have been merged")
+				cfg.Warningf("Warning: all branches in this stack have been merged or queued")
 			}
 			target := s.Branches[targetIdx].Branch
 			if err := git.CheckoutBranch(target); err != nil {
@@ -201,9 +201,9 @@ func runNavigateToEnd(cfg *config.Config, top bool) error {
 	} else {
 		targetIdx = s.FirstActiveBranchIndex()
 		if targetIdx < 0 {
-			// All merged — fall back to first branch with warning
+			// All merged or queued — fall back to first branch with warning
 			targetIdx = 0
-			cfg.Warningf("Warning: all branches in this stack have been merged")
+			cfg.Warningf("Warning: all branches in this stack have been merged or queued")
 		}
 	}
 
