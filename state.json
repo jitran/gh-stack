@@ -1,97 +1,89 @@
 {
-  "last_run": "2026-04-24T14:15:43Z",
-  "workflow_run_id": "24894105394",
-  "monthly_summary_issue": 8,
-  "issue_cursor": null,
+  "last_run": "2026-04-26T13:47:54Z",
+  "last_run_id": "24958149928",
+  "monthly_activity_issue": 8,
   "comments_made": {
-    "2": "2026-04-20T14:20:37Z"
+    "2": "2026-04-20T14:20:00Z"
   },
-  "pr_attempts": {
-    "draft-pr-status": {
-      "branch": "repo-assist/improve-draft-pr-status-2026-04-17-46f83115cc2d40c6",
-      "description": "Track and surface draft PR status throughout",
-      "pr_number": 4,
+  "fix_attempts": {
+    "fix-allskipped-messages-2026-04-26": {
+      "pr": 22,
       "status": "open",
-      "note": "Rebased onto main 2026-04-23."
+      "description": "Fix 'all merged' messages to say 'merged or queued' in navigate/sync/merge; adds Stack.IsFullySkipped()"
     },
-    "queued-pr-color": {
-      "branch": "repo-assist/improve-queued-pr-color-2026-04-17-708707443f8ac0ef",
-      "description": "Use warning color for queued PR numbers in short view",
-      "pr_number": 6,
+    "eng-gomod-tidy-check-2026-04-26": {
+      "pr": 23,
+      "status": "open",
+      "description": "Add go mod tidy CI check to test.yml"
+    },
+    "fix-add-merged-top-check-2026-04-25": {
+      "pr": 21,
+      "status": "open",
+      "description": "Fix gh stack add: use last active branch index for top-of-stack check"
+    },
+    "fix-view-full-static-queued-2026-04-24": {
+      "pr": 19,
       "status": "open"
     },
-    "batch-pr-fetch": {
-      "branch": "repo-assist/perf-batch-pr-fetch-2026-04-17-a223092d2e6d4237",
-      "description": "Batch PR fetch in syncStackPRs: N+1 GraphQL calls to 1",
-      "pr_number": 7,
+    "fix-rebase-isskipped-2026-04-24": {
+      "pr": 20,
       "status": "open"
     },
-    "add-dependabot": {
+    "fix-navigate-from-queued-2026-04-23": {
+      "pr": 17,
+      "status": "open"
+    },
+    "improve-top-skip-merged-queued-2026-04-22": {
+      "pr": 16,
+      "status": "open"
+    },
+    "test-queued-state-2026-04-21": {
+      "pr": 15,
+      "status": "open"
+    },
+    "fix-navigate-skip-queued-2026-04-20": {
+      "pr": 14,
+      "status": "open"
+    },
+    "fix-rebase-skip-queued-2026-04-19": {
+      "pr": 13,
+      "status": "open"
+    },
+    "perf-batch-submit-pr-fetch-2026-04-18": {
+      "pr": 12,
+      "status": "open"
+    },
+    "improve-needsrebase-queued-2026-04-18": {
+      "pr": 11,
+      "status": "open"
+    },
+    "improve-needsrebase-queued-2026-04-17": {
+      "pr": 10,
+      "status": "open",
+      "note": "superseded by #11"
+    },
+    "eng-add-dependabot-2026-04-17": {
       "branch": "repo-assist/eng-add-dependabot-2026-04-17-6ba553ac96099d13",
-      "description": "Add Dependabot config for Go modules and GitHub Actions",
-      "pr_number": null,
-      "issue_number": 9,
-      "status": "patch-pending",
-      "note": "Protected file — issue #9 created with link to create PR manually."
+      "status": "branch_only",
+      "issue": 9
     },
-    "fix-needsrebase-queued": {
-      "branch": "repo-assist/improve-needsrebase-queued-2026-04-18-75769f450f17c2af",
-      "description": "Fix needsRebase=true incorrectly set for queued branches in JSON output",
-      "pr_number": 11,
-      "status": "open",
-      "note": "PR #10 is a duplicate (older branch) — should be closed."
-    },
-    "batch-submit-pr-fetch": {
-      "branch": "repo-assist/perf-batch-submit-pr-fetch-2026-04-18",
-      "description": "Batch open-PR fetch in submit: N API calls to 1",
-      "pr_number": 12,
+    "perf-batch-pr-fetch-2026-04-17": {
+      "pr": 7,
       "status": "open"
     },
-    "fix-rebase-skip-queued": {
-      "branch": "repo-assist/fix-rebase-skip-queued-2026-04-19-8bf0fde17fa24e75",
-      "description": "Fix gh stack rebase not skipping queued branches",
-      "pr_number": 13,
+    "improve-queued-pr-color-2026-04-17": {
+      "pr": 6,
       "status": "open"
     },
-    "fix-navigate-skip-queued": {
-      "branch": "repo-assist/fix-navigate-skip-queued-2026-04-20-14990f9b3382b851",
-      "description": "Fix gh stack up/down skip counter to include queued branches",
-      "pr_number": 14,
+    "improve-draft-pr-status-2026-04-17": {
+      "pr": 4,
       "status": "open"
-    },
-    "test-queued-state": {
-      "branch": "repo-assist/test-queued-state-2026-04-21-3021d2a52d3508d8",
-      "description": "Add TestPush_SkipsQueuedBranches and TestViewJSON_QueuedBranch",
-      "pr_number": 15,
-      "status": "open"
-    },
-    "fix-top-skip-merged-queued": {
-      "branch": "repo-assist/improve-top-skip-merged-queued-2026-04-22-b9c559766d98f99d",
-      "description": "Fix gh stack top to skip merged/queued branches (adds LastActiveBranchIndex)",
-      "pr_number": 16,
-      "status": "open"
-    },
-    "fix-navigate-from-queued": {
-      "branch": "repo-assist/fix-navigate-from-queued-2026-04-23-517d080f5a9a4765",
-      "description": "Fix gh stack up/down navigation when starting from a queued branch",
-      "pr_number": 17,
-      "status": "open"
-    },
-    "fix-view-full-static-queued": {
-      "branch": "repo-assist/fix-view-full-static-queued-2026-04-24",
-      "description": "Fix viewFullStatic: add queued separator and correct branch coloring + 2 tests",
-      "pr_number": null,
-      "status": "patch-pending",
-      "note": "Branch pushed; PR creation pending GH Actions permissions. Create PR link in monthly summary."
-    },
-    "fix-rebase-isskipped": {
-      "branch": "repo-assist/fix-rebase-isskipped-2026-04-24",
-      "description": "Fix rebase.go: queued-branch warning, summary, and baseBranch consistency",
-      "pr_number": null,
-      "status": "patch-pending",
-      "note": "Branch pushed; PR creation pending GH Actions permissions. Create PR link in monthly summary."
     }
   },
-  "closed_issues": [3, 5],
-  "notes": "Monthly summary is issue #8. Open PRs: #4, #6, #7, #11, #12, #13, #14, #15, #16, #17. PR #10 is a duplicate of #11 — suggest closing #10. Issue #2 should be closed once PR #4 is merged. Issue #9 for dependabot (protected file). This run (2026-04-24): created branch fix-view-full-static-queued (Task 3) and fix-rebase-isskipped (Task 4) — both pending PR creation due to GH Actions permissions."
+  "notes": "PR creation via safeoutputs works now. 16 open Repo Assist PRs: #4, #6, #7, #10, #11, #12, #13, #14, #15, #16, #17, #19, #20, #21, #22, #23. PR #10 superseded by #11 (suggest closing). Issue #2 superseded by PR #4. PR #22 = fix allskipped messages; PR #23 = go mod tidy CI check. Note: Queued field is transient (json:\"-\"), command-level queued tests must use Merged=true or mock GitHub client.",
+  "backlog_cursor": {
+    "issues": 4,
+    "last_issue_processed": 2
+  },
+  "checked_off_by_maintainer": []
 }
