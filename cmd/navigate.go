@@ -76,6 +76,9 @@ func runNavigate(cfg *config.Config, delta int) error {
 	s := result.Stack
 	currentBranch := result.CurrentBranch
 
+	// Populate queued state so navigation correctly skips queued branches.
+	syncStackPRs(cfg, s)
+
 	idx := s.IndexOf(currentBranch)
 	if idx < 0 {
 		// Current branch is the trunk (not in s.Branches).
@@ -189,6 +192,9 @@ func runNavigateToEnd(cfg *config.Config, top bool) error {
 	}
 	s := result.Stack
 	currentBranch := result.CurrentBranch
+
+	// Populate queued state so navigation correctly skips queued branches.
+	syncStackPRs(cfg, s)
 
 	if len(s.Branches) == 0 {
 		cfg.Errorf("stack has no branches")
