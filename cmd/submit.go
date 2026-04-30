@@ -126,7 +126,13 @@ func runSubmit(cfg *config.Config, opts *submitOptions) error {
 			// Create new PR — auto-generate title from commits/branch name,
 			// then prompt interactively unless --auto or non-interactive.
 			baseBranchForDiff := s.ActiveBaseBranch(b.Branch)
-			title, commitBody := defaultPRTitleBody(baseBranchForDiff, b.Branch)
+			// Strip the stack prefix for the fallback title so "feat/step-01"
+			// humanizes to "step 01" rather than "feat/step 01".
+			displayBranch := b.Branch
+			if s.Prefix != "" {
+				displayBranch = strings.TrimPrefix(displayBranch, s.Prefix+"/")
+			}
+			title, commitBody := defaultPRTitleBody(baseBranchForDiff, b.Branch, displayBranch)
 			originalTitle := title
 			if !opts.auto && cfg.IsInteractive() {
 				p := prompter.New(cfg.In, cfg.Out, cfg.Err)
@@ -210,13 +216,14 @@ func runSubmit(cfg *config.Config, opts *submitOptions) error {
 
 // defaultPRTitleBody generates a PR title and body from the branch's commits.
 // If there is exactly one commit, use its subject as the title and its body
-// (if any) as the PR body. Otherwise, humanize the branch name for the title.
-func defaultPRTitleBody(base, head string) (string, string) {
+// (if any) as the PR body. Otherwise, humanize displayName for the title.
+// displayName should be the meaningful part of the branch name (prefix stripped).
+func defaultPRTitleBody(base, head, displayName string) (string, string) {
 	commits, err := git.LogRange(base, head)
 	if err == nil && len(commits) == 1 {
 		return commits[0].Subject, strings.TrimSpace(commits[0].Body)
 	}
-	return humanize(head), ""
+	return humanize(displayName), ""
 }
 
 // generatePRBody builds a PR description from the commit body (if any)
