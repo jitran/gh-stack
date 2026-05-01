@@ -1,15 +1,22 @@
 {
-  "last_run": "2026-04-30T00:00:00Z",
-  "last_run_id": "25171388824",
-  "monthly_activity_issue": 8,
+  "last_run": "2026-05-01T14:01:30Z",
+  "last_run_id": "25217091472",
+  "monthly_activity_issue": "aw_may2026",
+  "monthly_activity_issue_note": "May 2026 issue created this run (temp id aw_may2026); April #8 closed",
   "comments_made": {
     "2": "2026-04-20T14:20:00Z",
     "pr10": "2026-04-28T15:07:22Z"
   },
   "fix_attempts": {
-    "improve-pr-title-prefix-strip-2026-04-30": {
-      "branch": "repo-assist/improve-pr-title-prefix-strip-2026-04-30",
+    "perf-concurrent-checkout-pr-fetch-20260501": {
+      "branch": "repo-assist/perf-concurrent-checkout-pr-fetch-20260501",
+      "pr": 29,
       "status": "pr_created",
+      "description": "Fetch stack PR details concurrently in checkout (N sequential FindPRByNumber → concurrent goroutines)"
+    },
+    "improve-pr-title-prefix-strip-2026-04-30": {
+      "pr": 28,
+      "status": "open",
       "description": "Strip stack prefix when humanizing branch name for fallback PR title in submit"
     },
     "fix-merge-queued-branch-2026-04-29": {
@@ -95,7 +102,7 @@
       "status": "open"
     }
   },
-  "notes": "19 open Repo Assist PRs (18 numbered + 1 pending for prefix-strip fix). PR #10 superseded by #11. Issue #9 addressed by Dependabot PR. Issue #2 superseded by PR #4. All PRs have clean merge state. Tests cannot run in this env (go 1.25.7 required vs 1.24.13 available). PR #23 (go mod tidy CI) appears closed/merged.",
+  "notes": "20 open Repo Assist PRs (19 from before + #29 new perf PR). PR #10 superseded by #11. Issue #9 addressed by Dependabot PR. Issue #2 superseded by PR #4. No CI failures detected on any PRs. April monthly issue #8 closed; May issue created (aw_may2026). Tests cannot run locally (go 1.25.7 required vs not available).",
   "backlog_cursor": {
     "issues": 5,
     "last_issue_processed": 9
