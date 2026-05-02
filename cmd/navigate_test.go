@@ -414,83 +414,82 @@ func writeStackFile(t *testing.T, dir string, s stack.Stack) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "gh-stack"), data, 0644))
 }
 
-
 // TestNavigate_UpFromTrunk_AllSkipped verifies that gh stack up from the trunk
 // when all branches are inactive (here: all merged) falls back to the last
 // branch with a warning that includes "merged or queued".
 func TestNavigate_UpFromTrunk_AllSkipped(t *testing.T) {
-s := stack.Stack{
-Trunk: stack.BranchRef{Branch: "main"},
-Branches: []stack.BranchRef{
-{Branch: "b1", PullRequest: &stack.PullRequestRef{Number: 1, Merged: true}},
-{Branch: "b2", PullRequest: &stack.PullRequestRef{Number: 2, Merged: true}},
-},
-}
+	s := stack.Stack{
+		Trunk: stack.BranchRef{Branch: "main"},
+		Branches: []stack.BranchRef{
+			{Branch: "b1", PullRequest: &stack.PullRequestRef{Number: 1, Merged: true}},
+			{Branch: "b2", PullRequest: &stack.PullRequestRef{Number: 2, Merged: true}},
+		},
+	}
 
-var checkedOut []string
-tmpDir := t.TempDir()
-writeStackFile(t, tmpDir, s)
+	var checkedOut []string
+	tmpDir := t.TempDir()
+	writeStackFile(t, tmpDir, s)
 
-mock := &git.MockOps{
-GitDirFn:        func() (string, error) { return tmpDir, nil },
-CurrentBranchFn: func() (string, error) { return "main", nil },
-CheckoutBranchFn: func(name string) error {
-checkedOut = append(checkedOut, name)
-return nil
-},
-}
-restore := git.SetOps(mock)
-defer restore()
+	mock := &git.MockOps{
+		GitDirFn:        func() (string, error) { return tmpDir, nil },
+		CurrentBranchFn: func() (string, error) { return "main", nil },
+		CheckoutBranchFn: func(name string) error {
+			checkedOut = append(checkedOut, name)
+			return nil
+		},
+	}
+	restore := git.SetOps(mock)
+	defer restore()
 
-cfg, outR, errR := config.NewTestConfig()
-cmd := UpCmd(cfg)
-cmd.SetOut(io.Discard)
-cmd.SetErr(io.Discard)
-err := cmd.Execute()
+	cfg, outR, errR := config.NewTestConfig()
+	cmd := UpCmd(cfg)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	err := cmd.Execute()
 
-output := readCfgOutput(cfg, outR, errR)
+	output := readCfgOutput(cfg, outR, errR)
 
-assert.NoError(t, err)
-assert.Equal(t, []string{"b2"}, checkedOut, "should fall back to last branch")
-assert.Contains(t, output, "merged or queued")
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"b2"}, checkedOut, "should fall back to last branch")
+	assert.Contains(t, output, "merged or queued")
 }
 
 // TestNavigateToEnd_Bottom_AllSkipped verifies that gh stack bottom when all
 // branches are inactive (here: all merged) falls back to the first branch
 // and emits a "merged or queued" warning.
 func TestNavigateToEnd_Bottom_AllSkipped(t *testing.T) {
-s := stack.Stack{
-Trunk: stack.BranchRef{Branch: "main"},
-Branches: []stack.BranchRef{
-{Branch: "b1", PullRequest: &stack.PullRequestRef{Number: 1, Merged: true}},
-{Branch: "b2", PullRequest: &stack.PullRequestRef{Number: 2, Merged: true}},
-},
-}
+	s := stack.Stack{
+		Trunk: stack.BranchRef{Branch: "main"},
+		Branches: []stack.BranchRef{
+			{Branch: "b1", PullRequest: &stack.PullRequestRef{Number: 1, Merged: true}},
+			{Branch: "b2", PullRequest: &stack.PullRequestRef{Number: 2, Merged: true}},
+		},
+	}
 
-var checkedOut []string
-tmpDir := t.TempDir()
-writeStackFile(t, tmpDir, s)
+	var checkedOut []string
+	tmpDir := t.TempDir()
+	writeStackFile(t, tmpDir, s)
 
-mock := &git.MockOps{
-GitDirFn:        func() (string, error) { return tmpDir, nil },
-CurrentBranchFn: func() (string, error) { return "main", nil },
-CheckoutBranchFn: func(name string) error {
-checkedOut = append(checkedOut, name)
-return nil
-},
-}
-restore := git.SetOps(mock)
-defer restore()
+	mock := &git.MockOps{
+		GitDirFn:        func() (string, error) { return tmpDir, nil },
+		CurrentBranchFn: func() (string, error) { return "main", nil },
+		CheckoutBranchFn: func(name string) error {
+			checkedOut = append(checkedOut, name)
+			return nil
+		},
+	}
+	restore := git.SetOps(mock)
+	defer restore()
 
-cfg, outR, errR := config.NewTestConfig()
-cmd := BottomCmd(cfg)
-cmd.SetOut(io.Discard)
-cmd.SetErr(io.Discard)
-err := cmd.Execute()
+	cfg, outR, errR := config.NewTestConfig()
+	cmd := BottomCmd(cfg)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	err := cmd.Execute()
 
-output := readCfgOutput(cfg, outR, errR)
+	output := readCfgOutput(cfg, outR, errR)
 
-assert.NoError(t, err)
-assert.Equal(t, []string{"b1"}, checkedOut, "should fall back to first branch")
-assert.Contains(t, output, "merged or queued")
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"b1"}, checkedOut, "should fall back to first branch")
+	assert.Contains(t, output, "merged or queued")
 }

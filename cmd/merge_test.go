@@ -306,4 +306,3 @@ func TestMerge_ByBranchName(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, output, "https://github.com/owner/repo/pull/42")
 }
-
