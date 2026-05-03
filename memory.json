@@ -1,6 +1,6 @@
 {
-  "last_run": "2026-05-02T14:00:00Z",
-  "last_run_id": "25253437202",
+  "last_run": "2026-05-03T14:00:00Z",
+  "last_run_id": "25281020113",
   "monthly_activity_issue": 30,
   "comments_made": {
     "2": "2026-04-20T14:20:00Z",
@@ -11,7 +11,7 @@
       "branch": "repo-assist/perf-concurrent-checkout-pr-fetch-20260501",
       "pr": 29,
       "status": "open",
-      "description": "Fetch stack PR details concurrently in checkout (N sequential FindPRByNumber → concurrent goroutines)"
+      "description": "Fetch stack PR details concurrently in checkout (N sequential FindPRByNumber \u2192 concurrent goroutines)"
     },
     "improve-pr-title-prefix-strip-2026-04-30": {
       "pr": 28,
@@ -100,9 +100,15 @@
     "improve-draft-pr-status-2026-04-17": {
       "pr": 4,
       "status": "open"
+    },
+    "perf-cache-repo-id-20260503": {
+      "branch": "repo-assist/perf-cache-repo-id-20260503",
+      "pr": 31,
+      "status": "open",
+      "description": "Cache repository node ID in Client struct to avoid N redundant GraphQL calls per submit run"
     }
   },
-  "notes": "20 open Repo Assist PRs. PR #10 superseded by #11. Issue #9 addressed by Dependabot branch (no PR). Issue #2 superseded by PR #4. PR #22 had gofmt formatting issues in test files; fixed and pushed 2026-05-02. Note: multiple PRs touch same files (navigate.go, view.go, rebase.go etc) - potential merge conflicts when merging multiple PRs. Tests cannot run locally (go 1.25.7 required). Go is not installed but gofmt is at /usr/bin/gofmt.",
+  "notes": "21 open Repo Assist PRs (including PR #31 pending push). PR #10 superseded by #11. Issue #9 addressed by Dependabot branch (no PR). Issue #2 superseded by PR #4. Note: multiple PRs touch same files (navigate.go, view.go, rebase.go etc) - potential merge conflicts when merging multiple PRs. Tests cannot run locally (go 1.25.7 required). Go is not installed but gofmt is at /usr/bin/gofmt.",
   "backlog_cursor": {
     "issues": 6,
     "last_issue_processed": 30
