@@ -36,12 +36,13 @@ func (pr *PullRequest) IsQueued() bool {
 
 // Client wraps GitHub API operations.
 type Client struct {
-	gql   *api.GraphQLClient
-	rest  *api.RESTClient
-	host  string
-	owner string
-	repo  string
-	slug  string
+	gql    *api.GraphQLClient
+	rest   *api.RESTClient
+	host   string
+	owner  string
+	repo   string
+	slug   string
+	repoID string // cached repository node ID, populated on first use
 }
 
 // NewClient creates a new GitHub API client for the given repository.
@@ -234,6 +235,10 @@ func (c *Client) UpdatePRBase(number int, base string) error {
 }
 
 func (c *Client) repositoryID() (string, error) {
+	if c.repoID != "" {
+		return c.repoID, nil
+	}
+
 	var query struct {
 		Repository struct {
 			ID string
@@ -249,7 +254,8 @@ func (c *Client) repositoryID() (string, error) {
 		return "", fmt.Errorf("fetching repository ID: %w", err)
 	}
 
-	return query.Repository.ID, nil
+	c.repoID = query.Repository.ID
+	return c.repoID, nil
 }
 
 // PRDetails holds enriched pull request data for display in the TUI.
