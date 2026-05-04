@@ -1,17 +1,23 @@
 {
-  "last_run": "2026-05-03T14:00:00Z",
-  "last_run_id": "25281020113",
+  "last_run": "2026-05-04T14:39:54Z",
+  "last_run_id": "25325267839",
   "monthly_activity_issue": 30,
   "comments_made": {
     "2": "2026-04-20T14:20:00Z",
     "pr10": "2026-04-28T15:07:22Z"
   },
   "fix_attempts": {
+    "eng-ci-lint-checks-20260504": {
+      "branch": "repo-assist/eng-ci-lint-checks-20260504",
+      "pr": 32,
+      "status": "open",
+      "description": "Add gofmt and go mod tidy checks to CI lint job in test.yml (closes #23)"
+    },
     "perf-concurrent-checkout-pr-fetch-20260501": {
       "branch": "repo-assist/perf-concurrent-checkout-pr-fetch-20260501",
       "pr": 29,
       "status": "open",
-      "description": "Fetch stack PR details concurrently in checkout (N sequential FindPRByNumber \u2192 concurrent goroutines)"
+      "description": "Fetch stack PR details concurrently in checkout (N sequential FindPRByNumber -> concurrent goroutines)"
     },
     "improve-pr-title-prefix-strip-2026-04-30": {
       "pr": 28,
@@ -25,9 +31,9 @@
     },
     "eng-add-dependabot-2026-04-17": {
       "branch": "repo-assist/eng-add-dependabot-2026-04-17-6ba553ac96099d13",
-      "status": "branch_only",
+      "status": "blocked_protected_files",
       "issue": 9,
-      "description": "Dependabot config for Go modules and GitHub Actions (closes #9)"
+      "description": "Dependabot config for Go modules and GitHub Actions (closes #9) - blocked by protected file restriction"
     },
     "fix-navigate-sync-queued-2026-04-27": {
       "pr": 24,
@@ -108,7 +114,7 @@
       "description": "Cache repository node ID in Client struct to avoid N redundant GraphQL calls per submit run"
     }
   },
-  "notes": "21 open Repo Assist PRs (including PR #31 pending push). PR #10 superseded by #11. Issue #9 addressed by Dependabot branch (no PR). Issue #2 superseded by PR #4. Note: multiple PRs touch same files (navigate.go, view.go, rebase.go etc) - potential merge conflicts when merging multiple PRs. Tests cannot run locally (go 1.25.7 required). Go is not installed but gofmt is at /usr/bin/gofmt.",
+  "notes": "22 open Repo Assist PRs (including PR #32 just created for gofmt+go mod tidy CI). PR #10 superseded by #11. Issue #9 addressed by Dependabot branch but blocked by protected file restriction. Issue #2 superseded by PR #4. Issue #23 closed by PR #32. Note: multiple PRs touch same files (navigate.go, view.go, rebase.go etc) - potential merge conflicts when merging multiple PRs. Tests cannot run locally (go 1.25.7 required). Go is not installed but gofmt is at /usr/bin/gofmt.",
   "backlog_cursor": {
     "issues": 6,
     "last_issue_processed": 30
