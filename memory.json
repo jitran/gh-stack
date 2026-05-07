@@ -1,5 +1,5 @@
 {
-  "last_run": "2026-05-04T14:39:54Z",
+  "last_run": "2026-05-07",
   "last_run_id": "25325267839",
   "monthly_activity_issue": 30,
   "comments_made": {
@@ -112,9 +112,23 @@
       "pr": 31,
       "status": "open",
       "description": "Cache repository node ID in Client struct to avoid N redundant GraphQL calls per submit run"
+    },
+    "fix-continue-rebase-queued-20260507": {
+      "issue": null,
+      "branch": "repo-assist/fix-continue-rebase-queued-20260507",
+      "status": "open",
+      "description": "Fix continueRebase to skip queued branches using IsSkipped()",
+      "date": "2026-05-07"
+    },
+    "improve-last-active-branch-index-20260507": {
+      "issue": null,
+      "branch": "repo-assist/improve-last-active-branch-index-20260507",
+      "status": "open",
+      "description": "Add LastActiveBranchIndex() and use in interactiveStackPicker",
+      "date": "2026-05-07"
     }
   },
-  "notes": "22 open Repo Assist PRs (including PR #32 just created for gofmt+go mod tidy CI). PR #10 superseded by #11. Issue #9 addressed by Dependabot branch but blocked by protected file restriction. Issue #2 superseded by PR #4. Issue #23 closed by PR #32. Note: multiple PRs touch same files (navigate.go, view.go, rebase.go etc) - potential merge conflicts when merging multiple PRs. Tests cannot run locally (go 1.25.7 required). Go is not installed but gofmt is at /usr/bin/gofmt.",
+  "notes": "Run 2026-05-07: created 2 PRs (rebase --continue queued fix, LastActiveBranchIndex improvement). 23 open Repo Assist PRs total.",
   "backlog_cursor": {
     "issues": 6,
     "last_issue_processed": 30
