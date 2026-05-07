@@ -367,10 +367,11 @@ func continueRebase(cfg *config.Config, gitDir string) error {
 
 	var baseBranch string
 	if state.UseOnto {
-		// The --onto path targets the first non-merged ancestor, or trunk.
+		// The --onto path targets the first non-skipped (non-merged, non-queued)
+		// ancestor, or trunk.
 		baseBranch = s.Trunk.Branch
 		for j := state.CurrentBranchIndex - 1; j >= 0; j-- {
-			if !s.Branches[j].IsMerged() {
+			if !s.Branches[j].IsSkipped() {
 				baseBranch = s.Branches[j].Branch
 				break
 			}
@@ -388,12 +389,16 @@ func continueRebase(cfg *config.Config, gitDir string) error {
 			return fmt.Errorf("branch %q from saved rebase state is no longer in the stack — the stack may have been modified since the rebase started; consider aborting with --abort", branchName)
 		}
 
-		// Skip branches whose PRs have already been merged.
+		// Skip branches whose PRs have been merged or are in a merge queue.
 		br := s.Branches[idx]
-		if br.IsMerged() {
+		if br.IsSkipped() {
 			state.OntoOldBase = state.OriginalRefs[branchName]
 			state.UseOnto = true
-			cfg.Successf("Skipping %s (PR %s merged)", branchName, cfg.PRLink(br.PullRequest.Number, br.PullRequest.URL))
+			if br.IsMerged() {
+				cfg.Successf("Skipping %s (PR %s merged)", branchName, cfg.PRLink(br.PullRequest.Number, br.PullRequest.URL))
+			} else {
+				cfg.Successf("Skipping %s (PR %s queued)", branchName, cfg.PRLink(br.PullRequest.Number, br.PullRequest.URL))
+			}
 			continue
 		}
 
@@ -405,11 +410,12 @@ func continueRebase(cfg *config.Config, gitDir string) error {
 		}
 
 		if state.UseOnto {
-			// Find the proper --onto target: first non-merged ancestor, or trunk.
+			// Find the proper --onto target: first non-skipped (non-merged,
+			// non-queued) ancestor, or trunk.
 			newBase := s.Trunk.Branch
 			for j := idx - 1; j >= 0; j-- {
 				b := s.Branches[j]
-				if !b.IsMerged() {
+				if !b.IsSkipped() {
 					newBase = b.Branch
 					break
 				}
