@@ -192,6 +192,55 @@ func TestFirstActiveBranchIndex(t *testing.T) {
 	})
 }
 
+// --- LastActiveBranchIndex: navigation ---
+
+func TestLastActiveBranchIndex(t *testing.T) {
+	t.Run("last is active", func(t *testing.T) {
+		s := makeStack("main", "b1", "b2")
+		assert.Equal(t, 1, s.LastActiveBranchIndex())
+	})
+
+	t.Run("last two merged first active", func(t *testing.T) {
+		s := Stack{
+			Trunk: BranchRef{Branch: "main"},
+			Branches: []BranchRef{
+				{Branch: "b1"},
+				makeMergedBranch("b2", 2),
+				makeMergedBranch("b3", 3),
+			},
+		}
+		assert.Equal(t, 0, s.LastActiveBranchIndex())
+	})
+
+	t.Run("last is active others merged", func(t *testing.T) {
+		s := Stack{
+			Trunk: BranchRef{Branch: "main"},
+			Branches: []BranchRef{
+				makeMergedBranch("b1", 1),
+				makeMergedBranch("b2", 2),
+				{Branch: "b3"},
+			},
+		}
+		assert.Equal(t, 2, s.LastActiveBranchIndex())
+	})
+
+	t.Run("all merged", func(t *testing.T) {
+		s := Stack{
+			Trunk: BranchRef{Branch: "main"},
+			Branches: []BranchRef{
+				makeMergedBranch("b1", 1),
+				makeMergedBranch("b2", 2),
+			},
+		}
+		assert.Equal(t, -1, s.LastActiveBranchIndex())
+	})
+
+	t.Run("single active branch", func(t *testing.T) {
+		s := makeStack("main", "b1")
+		assert.Equal(t, 0, s.LastActiveBranchIndex())
+	})
+}
+
 // --- ActiveBranchIndices: navigation ---
 
 func TestActiveBranchIndices(t *testing.T) {

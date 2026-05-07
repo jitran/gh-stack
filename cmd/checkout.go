@@ -83,6 +83,9 @@ func runCheckout(cfg *config.Config, opts *checkoutOptions) error {
 			return nil
 		}
 		targetBranch = s.Branches[len(s.Branches)-1].Branch
+		if idx := s.LastActiveBranchIndex(); idx >= 0 {
+			targetBranch = s.Branches[idx].Branch
+		}
 	} else if prNumber, parseErr := strconv.Atoi(opts.target); parseErr == nil && prNumber > 0 {
 		// Target is a pure integer — try local PR, then remote API, then branch name
 		s, targetBranch, err = resolveNumericTarget(cfg, sf, gitDir, prNumber, opts.target)

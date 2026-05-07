@@ -156,6 +156,16 @@ func (s *Stack) FirstActiveBranchIndex() int {
 	return -1
 }
 
+// LastActiveBranchIndex returns the index of the last active (not merged, not queued) branch, or -1.
+func (s *Stack) LastActiveBranchIndex() int {
+	for i := len(s.Branches) - 1; i >= 0; i-- {
+		if !s.Branches[i].IsSkipped() {
+			return i
+		}
+	}
+	return -1
+}
+
 // ActiveBranchIndices returns the indices of all active (not merged, not queued) branches.
 func (s *Stack) ActiveBranchIndices() []int {
 	var indices []int
