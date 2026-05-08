@@ -14,7 +14,7 @@ description: |
   Always polite, constructive, and mindful of the project's goals.
 
 on:
-  schedule: daily
+  # schedule: daily
   workflow_dispatch:
   slash_command:
     name: repo-assist
@@ -32,7 +32,7 @@ network:
   - python
   - rust
   - java
-  - "proxy.golang.org"
+  - go
 
 checkout:
   fetch: ["*"]     # fetch all remote branches to allow working on PR branches
