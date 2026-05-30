@@ -174,7 +174,9 @@ func viewJSON(cfg *config.Config, s *stack.Stack, currentBranch string) error {
 		}
 
 		// Check if the branch needs rebasing (base not ancestor of branch).
-		if !jb.IsMerged {
+		// Queued branches are skipped: they are already in the merge queue and
+		// cannot be rebased, so reporting needsRebase=true would be misleading.
+		if !jb.IsMerged && !jb.IsQueued {
 			baseBranch := s.ActiveBaseBranch(b.Branch)
 			if isAnc, err := git.IsAncestor(baseBranch, b.Branch); err == nil && !isAnc {
 				jb.NeedsRebase = true
