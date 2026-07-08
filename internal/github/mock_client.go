@@ -4,16 +4,17 @@ package github
 // Each field is an optional function that, when set, handles the corresponding
 // ClientOps method call. When nil, a reasonable default is returned.
 type MockClient struct {
-	FindPRForBranchFn        func(string) (*PullRequest, error)
-	FindAnyPRForBranchFn     func(string) (*PullRequest, error)
-	FindPRByNumberFn         func(int) (*PullRequest, error)
-	FindPRDetailsForBranchFn func(string) (*PRDetails, error)
-	CreatePRFn               func(string, string, string, string, bool) (*PullRequest, error)
-	UpdatePRBaseFn           func(int, string) error
-	ListStacksFn             func() ([]RemoteStack, error)
-	CreateStackFn            func([]int) (int, error)
-	UpdateStackFn            func(string, []int) error
-	DeleteStackFn            func(string) error
+	FindPRForBranchFn          func(string) (*PullRequest, error)
+	FindOpenPRsForBranchesFn   func([]string) (map[string]*PullRequest, error)
+	FindAnyPRForBranchFn       func(string) (*PullRequest, error)
+	FindPRByNumberFn           func(int) (*PullRequest, error)
+	FindPRDetailsForBranchFn   func(string) (*PRDetails, error)
+	CreatePRFn                 func(string, string, string, string, bool) (*PullRequest, error)
+	UpdatePRBaseFn             func(int, string) error
+	ListStacksFn               func() ([]RemoteStack, error)
+	CreateStackFn              func([]int) (int, error)
+	UpdateStackFn              func(string, []int) error
+	DeleteStackFn              func(string) error
 }
 
 // Compile-time check that MockClient satisfies ClientOps.
@@ -23,6 +24,14 @@ func (m *MockClient) FindPRForBranch(branch string) (*PullRequest, error) {
 	if m.FindPRForBranchFn != nil {
 		return m.FindPRForBranchFn(branch)
 	}
+	return nil, nil
+}
+
+func (m *MockClient) FindOpenPRsForBranches(branches []string) (map[string]*PullRequest, error) {
+	if m.FindOpenPRsForBranchesFn != nil {
+		return m.FindOpenPRsForBranchesFn(branches)
+	}
+	// Return nil to trigger fallback to per-branch FindPRForBranch in callers.
 	return nil, nil
 }
 

@@ -829,3 +829,120 @@ func TestSubmit_CreatesMissingPRsAndUpdatesExisting(t *testing.T) {
 	// Stack should be created with all 3 PRs
 	assert.Contains(t, output, "Stack created on GitHub with 3 PRs")
 }
+
+// TestSubmit_BatchFetchesOpenPRs verifies that FindOpenPRsForBranches is called
+// once for all active branches instead of FindPRForBranch once per branch.
+// It also tests the graceful fallback: if FindOpenPRsForBranches returns nil,
+// submit falls back to per-branch FindPRForBranch calls.
+func TestSubmit_BatchFetchesOpenPRs(t *testing.T) {
+s := stack.Stack{
+Trunk: stack.BranchRef{Branch: "main"},
+Branches: []stack.BranchRef{
+{Branch: "b1", PullRequest: &stack.PullRequestRef{Number: 1, ID: "PR_1", URL: "u1"}},
+{Branch: "b2", PullRequest: &stack.PullRequestRef{Number: 2, ID: "PR_2", URL: "u2"}},
+},
+}
+
+tmpDir := t.TempDir()
+writeStackFile(t, tmpDir, s)
+
+mock := newSubmitMock(tmpDir, "b1")
+restore := git.SetOps(mock)
+defer restore()
+
+var batchCalls [][]string
+perBranchCalled := false
+
+cfg, _, errR := config.NewTestConfig()
+cfg.GitHubClientOverride = &github.MockClient{
+// Batch fetch — the primary path.
+FindOpenPRsForBranchesFn: func(branches []string) (map[string]*github.PullRequest, error) {
+batchCalls = append(batchCalls, branches)
+return map[string]*github.PullRequest{
+"b1": {Number: 1, ID: "PR_1", URL: "u1", BaseRefName: "main", HeadRefName: "b1"},
+"b2": {Number: 2, ID: "PR_2", URL: "u2", BaseRefName: "b1", HeadRefName: "b2"},
+}, nil
+},
+// Per-branch fallback — must NOT be called when batch succeeds.
+FindPRForBranchFn: func(branch string) (*github.PullRequest, error) {
+perBranchCalled = true
+return nil, nil
+},
+CreateStackFn: func(prNumbers []int) (int, error) { return 42, nil },
+}
+
+cmd := SubmitCmd(cfg)
+cmd.SetArgs([]string{"--auto"})
+cmd.SetOut(io.Discard)
+cmd.SetErr(io.Discard)
+err := cmd.Execute()
+
+cfg.Err.Close()
+_, _ = io.ReadAll(errR)
+
+require.NoError(t, err)
+
+// Batch query called exactly once with both active branches.
+require.Len(t, batchCalls, 1)
+assert.ElementsMatch(t, []string{"b1", "b2"}, batchCalls[0])
+
+// Per-branch fallback must not have been invoked.
+assert.False(t, perBranchCalled, "FindPRForBranch should not be called when batch succeeds")
+}
+
+// TestSubmit_BatchFetchFallback verifies that when FindOpenPRsForBranches
+// returns an error, submit gracefully falls back to per-branch FindPRForBranch.
+func TestSubmit_BatchFetchFallback(t *testing.T) {
+s := stack.Stack{
+Trunk: stack.BranchRef{Branch: "main"},
+Branches: []stack.BranchRef{
+{Branch: "b1"},
+},
+}
+
+tmpDir := t.TempDir()
+writeStackFile(t, tmpDir, s)
+
+mock := newSubmitMock(tmpDir, "b1")
+mock.LogRangeFn = func(base, head string) ([]git.CommitInfo, error) {
+return []git.CommitInfo{{Subject: "add feature"}}, nil
+}
+restore := git.SetOps(mock)
+defer restore()
+
+var perBranchCalls []string
+var createdPRs []string
+
+cfg, _, errR := config.NewTestConfig()
+cfg.GitHubClientOverride = &github.MockClient{
+// Batch fetch fails — triggers fallback.
+FindOpenPRsForBranchesFn: func(branches []string) (map[string]*github.PullRequest, error) {
+return nil, fmt.Errorf("network error")
+},
+// Per-branch fallback should be called.
+FindPRForBranchFn: func(branch string) (*github.PullRequest, error) {
+perBranchCalls = append(perBranchCalls, branch)
+return nil, nil // No existing PR → will be created.
+},
+CreatePRFn: func(base, head, title, body string, draft bool) (*github.PullRequest, error) {
+createdPRs = append(createdPRs, head)
+return &github.PullRequest{Number: 10, ID: "PR_10", URL: "u10"}, nil
+},
+CreateStackFn: func(prNumbers []int) (int, error) { return 1, nil },
+}
+
+cmd := SubmitCmd(cfg)
+cmd.SetArgs([]string{"--auto"})
+cmd.SetOut(io.Discard)
+cmd.SetErr(io.Discard)
+err := cmd.Execute()
+
+cfg.Err.Close()
+_, _ = io.ReadAll(errR)
+
+require.NoError(t, err)
+
+// Fallback used: per-branch lookup invoked for the active branch.
+assert.Equal(t, []string{"b1"}, perBranchCalls)
+assert.Equal(t, []string{"b1"}, createdPRs)
+}

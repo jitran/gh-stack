@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/cli/go-gh/v2/pkg/api"
 	graphql "github.com/cli/shurcooL-graphql"
@@ -117,6 +118,78 @@ func (c *Client) FindPRForBranch(branch string) (*PullRequest, error) {
 		Merged:          n.Merged,
 		MergeQueueEntry: n.MergeQueueEntry,
 	}, nil
+}
+
+// FindOpenPRsForBranches fetches the open PR for each branch in a single
+// batched GraphQL query, reducing N API round-trips to 1.
+// Keys in the returned map are branch names. Branches with no open PR are absent.
+// This is the batch equivalent of FindPRForBranch (open PRs only).
+func (c *Client) FindOpenPRsForBranches(branches []string) (map[string]*PullRequest, error) {
+	if len(branches) == 0 {
+		return make(map[string]*PullRequest), nil
+	}
+
+	// Build a batched query using field aliases — one per branch — so all
+	// open PRs are fetched in a single GraphQL round-trip.
+	const prFields = `{ nodes { id number title state url headRefName baseRefName isDraft merged mergeQueueEntry { id } } }`
+	var sb strings.Builder
+	fmt.Fprintf(&sb, `{ repository(owner: %q, name: %q) {`, c.owner, c.repo)
+	for i, branch := range branches {
+		// states: [OPEN] matches FindPRForBranch semantics (open PRs only).
+		fmt.Fprintf(&sb, ` b%d: pullRequests(headRefName: %q, states: [OPEN], first: 1) %s`, i, branch, prFields)
+	}
+	sb.WriteString(` } }`)
+
+	// prNode mirrors the GraphQL PR fields selected above.
+	type prNode struct {
+		ID              string `json:"id"`
+		Number          int    `json:"number"`
+		Title           string `json:"title"`
+		State           string `json:"state"`
+		URL             string `json:"url"`
+		HeadRefName     string `json:"headRefName"`
+		BaseRefName     string `json:"baseRefName"`
+		IsDraft         bool   `json:"isDraft"`
+		Merged          bool   `json:"merged"`
+		MergeQueueEntry *struct {
+			ID string `json:"id"`
+		} `json:"mergeQueueEntry"`
+	}
+	var resp struct {
+		Repository map[string]struct {
+			Nodes []prNode `json:"nodes"`
+		} `json:"repository"`
+	}
+
+	if err := c.gql.Do(sb.String(), nil, &resp); err != nil {
+		return nil, fmt.Errorf("batch open-PR query: %w", err)
+	}
+
+	result := make(map[string]*PullRequest, len(branches))
+	for i, branch := range branches {
+		bucket, ok := resp.Repository[fmt.Sprintf("b%d", i)]
+		if !ok || len(bucket.Nodes) == 0 {
+			continue
+		}
+		n := bucket.Nodes[0]
+		var mqe *MergeQueueEntry
+		if n.MergeQueueEntry != nil && n.MergeQueueEntry.ID != "" {
+			mqe = &MergeQueueEntry{ID: n.MergeQueueEntry.ID}
+		}
+		result[branch] = &PullRequest{
+			ID:              n.ID,
+			Number:          n.Number,
+			Title:           n.Title,
+			State:           n.State,
+			URL:             n.URL,
+			HeadRefName:     n.HeadRefName,
+			BaseRefName:     n.BaseRefName,
+			IsDraft:         n.IsDraft,
+			Merged:          n.Merged,
+			MergeQueueEntry: mqe,
+		}
+	}
+	return result, nil
 }
 
 // FindAnyPRForBranch finds the most recent PR by head branch name regardless of state.
