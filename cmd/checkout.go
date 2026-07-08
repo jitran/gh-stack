@@ -283,19 +283,35 @@ func findRemoteStackForPR(client github.ClientOps, prNumber int) (*github.Remote
 	return nil, nil
 }
 
-// fetchStackPRDetails fetches PR details for each number in the stack.
+// fetchStackPRDetails fetches PR details for each number in the stack
+// concurrently, reducing wall-clock time from O(N×latency) to O(latency).
 // Returns PRs in the same order as the input numbers.
 func fetchStackPRDetails(client github.ClientOps, prNumbers []int) ([]*github.PullRequest, error) {
-	prs := make([]*github.PullRequest, 0, len(prNumbers))
-	for _, n := range prNumbers {
-		pr, err := client.FindPRByNumber(n)
-		if err != nil {
-			return nil, fmt.Errorf("fetching PR #%d: %w", n, err)
+	type result struct {
+		index int
+		pr    *github.PullRequest
+		err   error
+		num   int
+	}
+
+	ch := make(chan result, len(prNumbers))
+	for i, n := range prNumbers {
+		go func(idx, num int) {
+			pr, err := client.FindPRByNumber(num)
+			ch <- result{index: idx, pr: pr, err: err, num: num}
+		}(i, n)
+	}
+
+	prs := make([]*github.PullRequest, len(prNumbers))
+	for range prNumbers {
+		r := <-ch
+		if r.err != nil {
+			return nil, fmt.Errorf("fetching PR #%d: %w", r.num, r.err)
 		}
-		if pr == nil {
-			return nil, fmt.Errorf("PR #%d not found", n)
+		if r.pr == nil {
+			return nil, fmt.Errorf("PR #%d not found", r.num)
 		}
-		prs = append(prs, pr)
+		prs[r.index] = r.pr
 	}
 	return prs, nil
 }
