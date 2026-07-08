@@ -218,6 +218,8 @@ func shortPRSuffix(cfg *config.Config, b stack.BranchRef, host, owner, repo stri
 	colorFn := cfg.ColorSuccess // green for open
 	if b.PullRequest.Merged {
 		colorFn = cfg.ColorMagenta // purple for merged
+	} else if b.IsQueued() {
+		colorFn = cfg.ColorWarning // yellow for queued (matches ◎ indicator)
 	}
 	return fmt.Sprintf(" %s", colorFn(prNum))
 }
