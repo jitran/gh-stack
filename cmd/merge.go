@@ -61,6 +61,10 @@ func runMerge(cfg *config.Config, target string) error {
 				cfg.Successf("All PRs in this stack have already been merged")
 				return nil
 			}
+			if s.IsFullySkipped() {
+				cfg.Successf("All PRs in this stack have been merged or are queued for merge")
+				return nil
+			}
 			cfg.Errorf("current branch %q is not a stack branch (it may be the trunk)", currentBranch)
 			return ErrNotInStack
 		}

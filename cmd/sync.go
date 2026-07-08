@@ -246,7 +246,7 @@ func runSync(cfg *config.Config, opts *syncOptions) error {
 	}
 
 	if len(branches) == 0 {
-		cfg.Printf("No active branches to push (all merged)")
+		cfg.Printf("No active branches to push (all merged or queued)")
 	} else {
 		// After rebase, force-with-lease is required (history rewritten).
 		// Without rebase, try a normal push first.

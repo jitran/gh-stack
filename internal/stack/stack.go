@@ -193,6 +193,17 @@ func (s *Stack) IsFullyMerged() bool {
 	return len(s.Branches) > 0
 }
 
+// IsFullySkipped returns true if all branches in the stack are merged or queued
+// (i.e. there are no active branches left to work on).
+func (s *Stack) IsFullySkipped() bool {
+	for _, b := range s.Branches {
+		if !b.IsSkipped() {
+			return false
+		}
+	}
+	return len(s.Branches) > 0
+}
+
 // StackFile represents the JSON file stored in .git/gh-stack.
 type StackFile struct {
 	SchemaVersion int     `json:"schemaVersion"`

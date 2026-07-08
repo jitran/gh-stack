@@ -605,3 +605,58 @@ func TestIsFullyMerged_NotAffectedByQueued(t *testing.T) {
 		assert.False(t, s.IsFullyMerged())
 	})
 }
+
+// TestIsFullySkipped verifies the IsFullySkipped predicate for merged/queued stacks.
+func TestIsFullySkipped(t *testing.T) {
+	t.Run("all merged", func(t *testing.T) {
+		s := Stack{
+			Trunk: BranchRef{Branch: "main"},
+			Branches: []BranchRef{
+				{Branch: "a", PullRequest: &PullRequestRef{Merged: true}},
+				{Branch: "b", PullRequest: &PullRequestRef{Merged: true}},
+			},
+		}
+		assert.True(t, s.IsFullySkipped())
+	})
+
+	t.Run("all queued", func(t *testing.T) {
+		s := Stack{
+			Trunk: BranchRef{Branch: "main"},
+			Branches: []BranchRef{
+				{Branch: "a", Queued: true},
+				{Branch: "b", Queued: true},
+			},
+		}
+		assert.True(t, s.IsFullySkipped())
+	})
+
+	t.Run("mixed merged and queued", func(t *testing.T) {
+		s := Stack{
+			Trunk: BranchRef{Branch: "main"},
+			Branches: []BranchRef{
+				{Branch: "a", PullRequest: &PullRequestRef{Merged: true}},
+				{Branch: "b", Queued: true},
+			},
+		}
+		assert.True(t, s.IsFullySkipped())
+	})
+
+	t.Run("one active branch", func(t *testing.T) {
+		s := Stack{
+			Trunk: BranchRef{Branch: "main"},
+			Branches: []BranchRef{
+				{Branch: "a", PullRequest: &PullRequestRef{Merged: true}},
+				{Branch: "b"},
+			},
+		}
+		assert.False(t, s.IsFullySkipped())
+	})
+
+	t.Run("empty stack", func(t *testing.T) {
+		s := Stack{
+			Trunk:    BranchRef{Branch: "main"},
+			Branches: []BranchRef{},
+		}
+		assert.False(t, s.IsFullySkipped())
+	})
+}
