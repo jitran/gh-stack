@@ -137,16 +137,16 @@ func runNavigate(cfg *config.Config, delta int) error {
 
 		newIdx = activeIndices[newActivePos]
 
-		// Count how many merged branches were skipped
+		// Count how many inactive (merged or queued) branches were skipped.
 		if newIdx > idx {
 			for i := idx + 1; i < newIdx; i++ {
-				if s.Branches[i].IsMerged() {
+				if s.Branches[i].IsSkipped() {
 					skipped++
 				}
 			}
 		} else if newIdx < idx {
 			for i := newIdx + 1; i < idx; i++ {
-				if s.Branches[i].IsMerged() {
+				if s.Branches[i].IsSkipped() {
 					skipped++
 				}
 			}
@@ -168,7 +168,7 @@ func runNavigate(cfg *config.Config, delta int) error {
 	}
 
 	if skipped > 0 {
-		cfg.Printf("Skipped %d merged %s", skipped, plural(skipped, "branch", "branches"))
+		cfg.Printf("Skipped %d inactive %s", skipped, plural(skipped, "branch", "branches"))
 	}
 
 	moved := newIdx - idx
