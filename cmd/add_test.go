@@ -80,6 +80,58 @@ func TestAdd_OnlyAllowedOnTopOfStack(t *testing.T) {
 	assert.Contains(t, output, "top of the stack")
 }
 
+func TestAdd_AllowedOnLastActiveBranchWithMergedAbove(t *testing.T) {
+	gitDir := t.TempDir()
+	saveStack(t, gitDir, stack.Stack{
+		Trunk: stack.BranchRef{Branch: "main"},
+		Branches: []stack.BranchRef{
+			{Branch: "b1"},
+			{Branch: "b2", PullRequest: &stack.PullRequestRef{Number: 2, Merged: true}},
+		},
+	})
+
+	var createdBranch string
+	restore := git.SetOps(&git.MockOps{
+		GitDirFn:        func() (string, error) { return gitDir, nil },
+		CurrentBranchFn: func() (string, error) { return "b1", nil },
+		CreateBranchFn:  func(name, base string) error { createdBranch = name; return nil },
+		CheckoutBranchFn: func(name string) error { return nil },
+		RevParseFn:       func(ref string) (string, error) { return "sha-" + ref, nil },
+	})
+	defer restore()
+
+	cfg, outR, errR := config.NewTestConfig()
+	runAdd(cfg, &addOptions{}, []string{"newbranch"})
+	output := collectOutput(cfg, outR, errR)
+
+	require.NotContains(t, output, "top of the stack", "should allow add from last active branch when merged branches sit above it")
+	assert.Equal(t, "newbranch", createdBranch)
+}
+
+func TestAdd_BlockedOnMergedBranch(t *testing.T) {
+	gitDir := t.TempDir()
+	saveStack(t, gitDir, stack.Stack{
+		Trunk: stack.BranchRef{Branch: "main"},
+		Branches: []stack.BranchRef{
+			{Branch: "b1"},
+			{Branch: "b2", PullRequest: &stack.PullRequestRef{Number: 2, Merged: true}},
+		},
+	})
+
+	restore := git.SetOps(&git.MockOps{
+		GitDirFn:        func() (string, error) { return gitDir, nil },
+		CurrentBranchFn: func() (string, error) { return "b2", nil },
+	})
+	defer restore()
+
+	cfg, outR, errR := config.NewTestConfig()
+	runAdd(cfg, &addOptions{}, []string{"newbranch"})
+	output := collectOutput(cfg, outR, errR)
+
+	assert.Contains(t, output, "top of the stack")
+	assert.Contains(t, output, "b1", "error should point to last active branch b1")
+}
+
 func TestAdd_MutuallyExclusiveFlags(t *testing.T) {
 	restore := git.SetOps(&git.MockOps{})
 	defer restore()
