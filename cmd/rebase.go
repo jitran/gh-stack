@@ -192,7 +192,9 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 			base = s.Branches[absIdx-1].Branch
 		}
 
-		// Skip branches whose PRs have already been merged (e.g. via squash).
+		// Skip branches whose PRs have already been merged (e.g. via squash)
+		// or are currently in a merge queue (rebasing a queued branch would
+		// conflict with the merge queue's ownership of the branch state).
 		// Record state so subsequent branches can use --onto rebase.
 		if br.IsMerged() {
 			ontoOldBase = originalRefs[br.Branch]
@@ -201,12 +203,20 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 			continue
 		}
 
+		if br.IsQueued() {
+			ontoOldBase = originalRefs[br.Branch]
+			needsOnto = true
+			cfg.Successf("Skipping %s (PR %s queued)", br.Branch, cfg.PRLink(br.PullRequest.Number, br.PullRequest.URL))
+			continue
+		}
+
 		if needsOnto {
-			// Find the proper --onto target: the first non-merged ancestor, or trunk.
+			// Find the proper --onto target: the first non-merged/non-queued
+			// ancestor, or trunk.
 			newBase := s.Trunk.Branch
 			for j := absIdx - 1; j >= 0; j-- {
 				b := s.Branches[j]
-				if !b.IsMerged() {
+				if !b.IsSkipped() {
 					newBase = b.Branch
 					break
 				}
@@ -397,6 +407,14 @@ func continueRebase(cfg *config.Config, gitDir string) error {
 			continue
 		}
 
+		// Skip branches whose PRs are currently in a merge queue.
+		if br.IsQueued() {
+			state.OntoOldBase = state.OriginalRefs[branchName]
+			state.UseOnto = true
+			cfg.Successf("Skipping %s (PR %s queued)", branchName, cfg.PRLink(br.PullRequest.Number, br.PullRequest.URL))
+			continue
+		}
+
 		var base string
 		if idx == 0 {
 			base = s.Trunk.Branch
@@ -405,11 +423,11 @@ func continueRebase(cfg *config.Config, gitDir string) error {
 		}
 
 		if state.UseOnto {
-			// Find the proper --onto target: first non-merged ancestor, or trunk.
+			// Find the proper --onto target: first non-merged/non-queued ancestor, or trunk.
 			newBase := s.Trunk.Branch
 			for j := idx - 1; j >= 0; j-- {
 				b := s.Branches[j]
-				if !b.IsMerged() {
+				if !b.IsSkipped() {
 					newBase = b.Branch
 					break
 				}
