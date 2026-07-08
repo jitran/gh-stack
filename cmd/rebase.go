@@ -142,8 +142,12 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 		currentIdx = 0
 	}
 
-	if opts.upstack && currentIdx >= 0 && s.Branches[currentIdx].IsMerged() {
-		cfg.Warningf("Current branch %q has already been merged", currentBranch)
+	if opts.upstack && currentIdx >= 0 {
+		if s.Branches[currentIdx].IsMerged() {
+			cfg.Warningf("Current branch %q has already been merged", currentBranch)
+		} else if s.Branches[currentIdx].IsQueued() {
+			cfg.Warningf("Current branch %q is currently in a merge queue", currentBranch)
+		}
 	}
 
 	startIdx := 0
@@ -311,6 +315,14 @@ func runRebase(cfg *config.Config, opts *rebaseOptions) error {
 		}
 		cfg.Printf("Skipped %d merged %s: %s", len(merged), plural(len(merged), "branch", "branches"), strings.Join(names, ", "))
 	}
+	queued := s.QueuedBranches()
+	if len(queued) > 0 {
+		names := make([]string, len(queued))
+		for i, q := range queued {
+			names[i] = q.Branch
+		}
+		cfg.Printf("Skipped %d queued %s: %s", len(queued), plural(len(queued), "branch", "branches"), strings.Join(names, ", "))
+	}
 
 	rangeDesc := "All branches in stack"
 	if opts.downstack {
@@ -367,10 +379,10 @@ func continueRebase(cfg *config.Config, gitDir string) error {
 
 	var baseBranch string
 	if state.UseOnto {
-		// The --onto path targets the first non-merged ancestor, or trunk.
+		// The --onto path targets the first non-merged/non-queued ancestor, or trunk.
 		baseBranch = s.Trunk.Branch
 		for j := state.CurrentBranchIndex - 1; j >= 0; j-- {
-			if !s.Branches[j].IsMerged() {
+			if !s.Branches[j].IsSkipped() {
 				baseBranch = s.Branches[j].Branch
 				break
 			}
