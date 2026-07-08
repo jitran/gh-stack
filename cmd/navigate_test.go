@@ -413,3 +413,82 @@ func writeStackFile(t *testing.T, dir string, s stack.Stack) {
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "gh-stack"), data, 0644))
 }
+
+// TestNavigate_UpFromQueuedBranch verifies that `gh stack up` from a queued
+// branch navigates one step up by raw index (not to the first active branch).
+func TestNavigate_UpFromQueuedBranch(t *testing.T) {
+	s := stack.Stack{
+		Trunk: stack.BranchRef{Branch: "main"},
+		Branches: []stack.BranchRef{
+			{Branch: "b1"},
+			{Branch: "b2", Queued: true, PullRequest: &stack.PullRequestRef{Number: 2}},
+			{Branch: "b3"},
+		},
+	}
+
+	var checkedOut []string
+	tmpDir := t.TempDir()
+	writeStackFile(t, tmpDir, s)
+
+	mock := &git.MockOps{
+		GitDirFn:        func() (string, error) { return tmpDir, nil },
+		CurrentBranchFn: func() (string, error) { return "b2", nil },
+		CheckoutBranchFn: func(name string) error {
+			checkedOut = append(checkedOut, name)
+			return nil
+		},
+	}
+	restore := git.SetOps(mock)
+	defer restore()
+
+	cfg, outR, errR := config.NewTestConfig()
+	cmd := UpCmd(cfg)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	err := cmd.Execute()
+
+	output := readCfgOutput(cfg, outR, errR)
+
+	assert.NoError(t, err)
+	// Should navigate one step up by raw index, not jump to first active branch.
+	assert.Equal(t, []string{"b3"}, checkedOut, "should step to adjacent b3, not jump")
+	assert.Contains(t, output, "you are on queued branch")
+}
+
+// TestNavigate_DownFromQueuedBranch verifies that `gh stack down` from a queued
+// branch navigates one step down by raw index.
+func TestNavigate_DownFromQueuedBranch(t *testing.T) {
+	s := stack.Stack{
+		Trunk: stack.BranchRef{Branch: "main"},
+		Branches: []stack.BranchRef{
+			{Branch: "b1"},
+			{Branch: "b2", Queued: true, PullRequest: &stack.PullRequestRef{Number: 2}},
+			{Branch: "b3"},
+		},
+	}
+
+	var checkedOut []string
+	tmpDir := t.TempDir()
+	writeStackFile(t, tmpDir, s)
+
+	mock := &git.MockOps{
+		GitDirFn:        func() (string, error) { return tmpDir, nil },
+		CurrentBranchFn: func() (string, error) { return "b2", nil },
+		CheckoutBranchFn: func(name string) error {
+			checkedOut = append(checkedOut, name)
+			return nil
+		},
+	}
+	restore := git.SetOps(mock)
+	defer restore()
+
+	cfg, _, _ := config.NewTestConfig()
+	cmd := DownCmd(cfg)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	err := cmd.Execute()
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"b1"}, checkedOut, "should step to adjacent b1")
+}
+
