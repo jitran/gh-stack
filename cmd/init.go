@@ -313,9 +313,10 @@ func runInit(cfg *config.Config, opts *initOptions) error {
 					continue
 				}
 				b.PullRequest = &stack.PullRequestRef{
-					Number: pr.Number,
-					ID:     pr.ID,
-					URL:    pr.URL,
+					Number:  pr.Number,
+					ID:      pr.ID,
+					URL:     pr.URL,
+					IsDraft: pr.IsDraft,
 				}
 			}
 		}

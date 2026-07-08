@@ -252,10 +252,11 @@ func syncStackPRs(cfg *config.Config, s *stack.Stack) {
 		}
 
 		b.PullRequest = &stack.PullRequestRef{
-			Number: pr.Number,
-			ID:     pr.ID,
-			URL:    pr.URL,
-			Merged: pr.Merged,
+			Number:  pr.Number,
+			ID:      pr.ID,
+			URL:     pr.URL,
+			Merged:  pr.Merged,
+			IsDraft: pr.IsDraft,
 		}
 		b.Queued = pr.IsQueued()
 	}

@@ -497,10 +497,11 @@ func importRemoteStack(
 		branchRefs[i] = stack.BranchRef{
 			Branch: pr.HeadRefName,
 			PullRequest: &stack.PullRequestRef{
-				Number: pr.Number,
-				ID:     pr.ID,
-				URL:    pr.URL,
-				Merged: pr.Merged,
+				Number:  pr.Number,
+				ID:      pr.ID,
+				URL:     pr.URL,
+				Merged:  pr.Merged,
+				IsDraft: pr.IsDraft,
 			},
 		}
 	}
@@ -537,10 +538,11 @@ func syncRemotePRState(s *stack.Stack, prs []*github.PullRequest) {
 			continue
 		}
 		s.Branches[i].PullRequest = &stack.PullRequestRef{
-			Number: pr.Number,
-			ID:     pr.ID,
-			URL:    pr.URL,
-			Merged: pr.Merged,
+			Number:  pr.Number,
+			ID:      pr.ID,
+			URL:     pr.URL,
+			Merged:  pr.Merged,
+			IsDraft: pr.IsDraft,
 		}
 		s.Branches[i].Queued = pr.IsQueued()
 	}

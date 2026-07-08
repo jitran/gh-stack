@@ -108,7 +108,8 @@ func viewShort(cfg *config.Config, s *stack.Stack, currentBranch string) error {
 //   - ✓ (purple) if the PR has been merged
 //   - ◎ (yellow) if the PR is queued in a merge queue
 //   - ⚠ (yellow) if the branch needs rebasing (non-linear history)
-//   - ○ (green) if there is an open PR
+//   - ○ (gray) if there is an open draft PR
+//   - ○ (green) if there is an open ready-for-review PR
 func branchStatusIndicator(cfg *config.Config, s *stack.Stack, b stack.BranchRef) string {
 	if b.IsMerged() {
 		return " " + cfg.ColorMagenta("✓")
@@ -124,6 +125,9 @@ func branchStatusIndicator(cfg *config.Config, s *stack.Stack, b stack.BranchRef
 	}
 
 	if b.PullRequest != nil && b.PullRequest.Number != 0 {
+		if b.PullRequest.IsDraft {
+			return " " + cfg.ColorGray("○")
+		}
 		return " " + cfg.ColorSuccess("○")
 	}
 
@@ -150,9 +154,10 @@ type viewJSONBranch struct {
 }
 
 type viewJSONPR struct {
-	Number int    `json:"number"`
-	URL    string `json:"url,omitempty"`
-	State  string `json:"state"`
+	Number  int    `json:"number"`
+	URL     string `json:"url,omitempty"`
+	State   string `json:"state"`
+	IsDraft bool   `json:"isDraft,omitempty"`
 }
 
 func viewJSON(cfg *config.Config, s *stack.Stack, currentBranch string) error {
@@ -187,11 +192,14 @@ func viewJSON(cfg *config.Config, s *stack.Stack, currentBranch string) error {
 				state = "MERGED"
 			} else if b.IsQueued() {
 				state = "QUEUED"
+			} else if b.PullRequest.IsDraft {
+				state = "DRAFT"
 			}
 			jb.PR = &viewJSONPR{
-				Number: b.PullRequest.Number,
-				URL:    b.PullRequest.URL,
-				State:  state,
+				Number:  b.PullRequest.Number,
+				URL:     b.PullRequest.URL,
+				State:   state,
+				IsDraft: b.PullRequest.IsDraft,
 			}
 		}
 
@@ -216,6 +224,9 @@ func shortPRSuffix(cfg *config.Config, b stack.BranchRef, host, owner, repo stri
 	}
 	prNum := cfg.PRLink(b.PullRequest.Number, url)
 	colorFn := cfg.ColorSuccess // green for open
+	if b.PullRequest.IsDraft {
+		colorFn = cfg.ColorGray // gray for draft
+	}
 	if b.PullRequest.Merged {
 		colorFn = cfg.ColorMagenta // purple for merged
 	}
