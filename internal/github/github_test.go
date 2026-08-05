@@ -27,6 +27,15 @@ func TestPRURL(t *testing.T) {
 	}
 }
 
+func TestClient_repositoryID_cached(t *testing.T) {
+	// When repoID is already populated, repositoryID returns it immediately
+	// without making any network call.
+	c := &Client{repoID: "cached-node-id-123"}
+	got, err := c.repositoryID()
+	assert.NoError(t, err)
+	assert.Equal(t, "cached-node-id-123", got)
+}
+
 func TestPullRequest_IsQueued(t *testing.T) {
 	t.Run("not queued when MergeQueueEntry is nil", func(t *testing.T) {
 		pr := &PullRequest{Number: 1}
