@@ -208,3 +208,62 @@ func TestPush_DoesNotCreatePRs(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, createPRCalled, "push should not create PRs")
 }
+
+// TestPush_SkipsQueuedBranches verifies that branches whose PRs are in a
+// merge queue are treated like merged branches and excluded from the push.
+func TestPush_SkipsQueuedBranches(t *testing.T) {
+	s := stack.Stack{
+		Trunk: stack.BranchRef{Branch: "main"},
+		Branches: []stack.BranchRef{
+			{Branch: "b1", PullRequest: &stack.PullRequestRef{Number: 1}},
+			{Branch: "b2"},
+			{Branch: "b3", PullRequest: &stack.PullRequestRef{Number: 3}},
+		},
+	}
+
+	tmpDir := t.TempDir()
+	writeStackFile(t, tmpDir, s)
+
+	var pushCalls []pushCall
+
+	mock := newPushMock(tmpDir, "b2")
+	mock.PushFn = func(remote string, branches []string, force, atomic bool) error {
+		pushCalls = append(pushCalls, pushCall{remote, branches, force, atomic})
+		return nil
+	}
+
+	restore := git.SetOps(mock)
+	defer restore()
+
+	cfg, _, errR := config.NewTestConfig()
+	cfg.GitHubClientOverride = &github.MockClient{
+		FindAnyPRForBranchFn: func(branch string) (*github.PullRequest, error) {
+			switch branch {
+			case "b1":
+				return &github.PullRequest{
+					Number:          1,
+					ID:              "PR_1",
+					MergeQueueEntry: &github.MergeQueueEntry{ID: "MQE_1"},
+				}, nil
+			case "b3":
+				return &github.PullRequest{
+					Number:          3,
+					ID:              "PR_3",
+					MergeQueueEntry: &github.MergeQueueEntry{ID: "MQE_3"},
+				}, nil
+			}
+			return nil, nil
+		},
+	}
+	cmd := PushCmd(cfg)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	err := cmd.Execute()
+
+	cfg.Err.Close()
+	_, _ = io.ReadAll(errR)
+
+	assert.NoError(t, err)
+	require.Len(t, pushCalls, 1)
+	assert.Equal(t, []string{"b2"}, pushCalls[0].branches, "only non-queued branch b2 should be pushed")
+}
