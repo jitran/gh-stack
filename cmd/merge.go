@@ -79,6 +79,12 @@ func runMerge(cfg *config.Config, target string) error {
 		return nil
 	}
 
+	if br.IsQueued() {
+		cfg.Successf("PR %s is currently in the merge queue", cfg.PRLink(br.PullRequest.Number, br.PullRequest.URL))
+		cfg.Printf("  %s", br.PullRequest.URL)
+		return nil
+	}
+
 	prURL := br.PullRequest.URL
 	prLink := cfg.PRLink(br.PullRequest.Number, prURL)
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/github/gh-stack/internal/config"
 	"github.com/github/gh-stack/internal/git"
+	"github.com/github/gh-stack/internal/github"
 	"github.com/github/gh-stack/internal/stack"
 	"github.com/stretchr/testify/assert"
 )
@@ -78,6 +79,54 @@ func TestMerge_AlreadyMerged(t *testing.T) {
 	assert.Contains(t, output, "already been merged")
 	assert.Contains(t, output, "https://github.com/owner/repo/pull/42")
 }
+
+func TestMerge_AlreadyQueued(t *testing.T) {
+	s := stack.Stack{
+		Trunk: stack.BranchRef{Branch: "main"},
+		Branches: []stack.BranchRef{
+			{Branch: "feat-1", PullRequest: &stack.PullRequestRef{
+				Number: 42,
+				URL:    "https://github.com/owner/repo/pull/42",
+			}},
+		},
+	}
+
+	tmpDir := t.TempDir()
+	writeStackFile(t, tmpDir, s)
+
+	restore := git.SetOps(newMergeMock(tmpDir, "feat-1"))
+	defer restore()
+
+	cfg, _, errR := config.NewTestConfig()
+	// Mock the GitHub client to report feat-1's PR as queued.
+	cfg.GitHubClientOverride = &github.MockClient{
+		FindAnyPRForBranchFn: func(branch string) (*github.PullRequest, error) {
+			if branch == "feat-1" {
+				return &github.PullRequest{
+					Number:          42,
+					ID:              "PR_42",
+					URL:             "https://github.com/owner/repo/pull/42",
+					MergeQueueEntry: &github.MergeQueueEntry{ID: "MQE_1"},
+				}, nil
+			}
+			return nil, nil
+		},
+	}
+
+	cmd := MergeCmd(cfg)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	err := cmd.Execute()
+
+	cfg.Err.Close()
+	errOut, _ := io.ReadAll(errR)
+	output := string(errOut)
+
+	assert.NoError(t, err)
+	assert.Contains(t, output, "merge queue")
+	assert.Contains(t, output, "https://github.com/owner/repo/pull/42")
+}
+
 
 func TestMerge_FullyMergedStack(t *testing.T) {
 	s := stack.Stack{
