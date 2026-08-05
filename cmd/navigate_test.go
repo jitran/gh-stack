@@ -328,6 +328,76 @@ func TestNavigate_Bottom(t *testing.T) {
 	assert.Equal(t, []string{"b1"}, checkedOut)
 }
 
+func TestNavigate_TopWithMergedLast(t *testing.T) {
+	s := stack.Stack{
+		Trunk: stack.BranchRef{Branch: "main"},
+		Branches: []stack.BranchRef{
+			{Branch: "b1"},
+			{Branch: "b2"},
+			{Branch: "b3", PullRequest: &stack.PullRequestRef{Number: 3, Merged: true}},
+		},
+	}
+
+	var checkedOut []string
+	tmpDir := t.TempDir()
+	writeStackFile(t, tmpDir, s)
+
+	mock := &git.MockOps{
+		GitDirFn:        func() (string, error) { return tmpDir, nil },
+		CurrentBranchFn: func() (string, error) { return "b1", nil },
+		CheckoutBranchFn: func(name string) error {
+			checkedOut = append(checkedOut, name)
+			return nil
+		},
+	}
+	restore := git.SetOps(mock)
+	defer restore()
+
+	cfg, _, _ := config.NewTestConfig()
+	cmd := TopCmd(cfg)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	err := cmd.Execute()
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"b2"}, checkedOut, "should skip merged b3 and land on last active branch")
+}
+
+func TestNavigate_TopWithQueuedLast(t *testing.T) {
+	s := stack.Stack{
+		Trunk: stack.BranchRef{Branch: "main"},
+		Branches: []stack.BranchRef{
+			{Branch: "b1"},
+			{Branch: "b2"},
+			{Branch: "b3", Queued: true},
+		},
+	}
+
+	var checkedOut []string
+	tmpDir := t.TempDir()
+	writeStackFile(t, tmpDir, s)
+
+	mock := &git.MockOps{
+		GitDirFn:        func() (string, error) { return tmpDir, nil },
+		CurrentBranchFn: func() (string, error) { return "b1", nil },
+		CheckoutBranchFn: func(name string) error {
+			checkedOut = append(checkedOut, name)
+			return nil
+		},
+	}
+	restore := git.SetOps(mock)
+	defer restore()
+
+	cfg, _, _ := config.NewTestConfig()
+	cmd := TopCmd(cfg)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	err := cmd.Execute()
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"b2"}, checkedOut, "should skip queued b3 and land on last active branch")
+}
+
 func TestNavigate_BottomWithMergedFirst(t *testing.T) {
 	s := stack.Stack{
 		Trunk: stack.BranchRef{Branch: "main"},
