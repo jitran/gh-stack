@@ -37,9 +37,14 @@ func runFeedback(cfg *config.Config, args []string) error {
 
 	b := browser.New("", cfg.Out, cfg.Err)
 	if err := b.Browse(targetURL); err != nil {
-		return err
+		// Browser unavailable (e.g. non-interactive or headless environment).
+		// Print the URL so the user can open it manually.
+		cfg.Printf("Could not open browser: %v", err)
+		cfg.Printf("Open this URL to submit feedback: %s", targetURL)
+		return nil
 	}
 
 	cfg.Successf("Opening feedback form in your browser...")
+	cfg.Printf("If it didn't open, visit: %s", targetURL)
 	return nil
 }
