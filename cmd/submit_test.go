@@ -51,7 +51,54 @@ func TestGeneratePRBody(t *testing.T) {
 	}
 }
 
-// newSubmitMock creates a MockOps pre-configured for submit tests.
+func TestDefaultPRTitleBody_SingleCommit(t *testing.T) {
+	restore := git.SetOps(&git.MockOps{
+		LogRangeFn: func(base, head string) ([]git.CommitInfo, error) {
+			return []git.CommitInfo{{Subject: "Add user auth", Body: "Detailed description"}}, nil
+		},
+	})
+	defer restore()
+
+	title, body := defaultPRTitleBody("main", "feat/step-01", "step-01")
+	assert.Equal(t, "Add user auth", title)
+	assert.Equal(t, "Detailed description", body)
+}
+
+func TestDefaultPRTitleBody_MultipleCommits_StripsPrefix(t *testing.T) {
+	restore := git.SetOps(&git.MockOps{
+		LogRangeFn: func(base, head string) ([]git.CommitInfo, error) {
+			return []git.CommitInfo{
+				{Subject: "commit one"},
+				{Subject: "commit two"},
+			}, nil
+		},
+	})
+	defer restore()
+
+	// With prefix stripped: "step-01" → "step 01"
+	title, body := defaultPRTitleBody("main", "feat/step-01", "step-01")
+	assert.Equal(t, "step 01", title)
+	assert.Equal(t, "", body)
+}
+
+func TestDefaultPRTitleBody_MultipleCommits_NoPrefix(t *testing.T) {
+	restore := git.SetOps(&git.MockOps{
+		LogRangeFn: func(base, head string) ([]git.CommitInfo, error) {
+			return []git.CommitInfo{
+				{Subject: "commit one"},
+				{Subject: "commit two"},
+			}, nil
+		},
+	})
+	defer restore()
+
+	// Without a prefix: display name equals head
+	title, body := defaultPRTitleBody("main", "my-feature", "my-feature")
+	assert.Equal(t, "my feature", title)
+	assert.Equal(t, "", body)
+}
+
+
 func newSubmitMock(tmpDir string, currentBranch string) *git.MockOps {
 	return &git.MockOps{
 		GitDirFn:        func() (string, error) { return tmpDir, nil },
